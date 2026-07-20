@@ -20,6 +20,30 @@ export function hostGatewayArgs(): string[] {
   return [];
 }
 
+/**
+ * Ensure a user-defined bridge network exists, creating it if absent. Idempotent.
+ * Used to place agent containers on a named network (e.g. `nanoclaw-net`) instead
+ * of the default bridge. Throws if the network can't be created — better to abort
+ * the spawn than silently fall back to bridge and lose the intended isolation.
+ */
+export function ensureNetwork(name: string): void {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(name)) {
+    throw new Error(`Invalid network name: ${name}`);
+  }
+  try {
+    execSync(`${CONTAINER_RUNTIME_BIN} network inspect ${name}`, { stdio: 'pipe' });
+    return;
+  } catch {
+    // Not present — create below.
+  }
+  try {
+    execSync(`${CONTAINER_RUNTIME_BIN} network create ${name}`, { stdio: 'pipe' });
+    log.info('Created container network', { network: name });
+  } catch (err) {
+    throw new Error(`Could not create container network "${name}": ${(err as Error).message}`);
+  }
+}
+
 /** Returns CLI args for a readonly bind mount. */
 export function readonlyMountArgs(hostPath: string, containerPath: string): string[] {
   return ['-v', `${hostPath}:${containerPath}:ro`];

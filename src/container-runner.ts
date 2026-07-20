@@ -16,6 +16,7 @@ import {
   CONTAINER_IMAGE_BASE,
   CONTAINER_INSTALL_LABEL,
   CONTAINER_MEMORY_LIMIT,
+  CONTAINER_NETWORK,
   DATA_DIR,
   GROUPS_DIR,
   ONECLI_API_KEY,
@@ -25,7 +26,13 @@ import {
 import { materializeContainerJson } from './container-config.js';
 import { getContainerConfig } from './db/container-configs.js';
 import { updateContainerConfigScalars } from './db/container-configs.js';
-import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
+import {
+  CONTAINER_RUNTIME_BIN,
+  ensureNetwork,
+  hostGatewayArgs,
+  readonlyMountArgs,
+  stopContainer,
+} from './container-runtime.js';
 import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
 import { composeGroupClaudeMd } from './claude-md-compose.js';
 import { getAgentGroup } from './db/agent-groups.js';
@@ -465,6 +472,14 @@ async function buildContainerArgs(
   if (ensureEgressNetwork()) {
     args.push(...egressNetworkArgs());
     log.info('Egress lockdown active', { containerName, network: EGRESS_NETWORK });
+  } else if (CONTAINER_NETWORK) {
+    // Join ONLY the named user-defined network (not the default bridge), so the
+    // agent can reach other containers on it by name. host.docker.internal is
+    // still added so the OneCLI gateway on the host stays reachable.
+    ensureNetwork(CONTAINER_NETWORK);
+    args.push('--network', CONTAINER_NETWORK);
+    args.push(...hostGatewayArgs());
+    log.info('Container network attached', { containerName, network: CONTAINER_NETWORK });
   } else {
     args.push(...hostGatewayArgs());
   }

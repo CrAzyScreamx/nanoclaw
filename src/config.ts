@@ -17,6 +17,7 @@ const envConfig = readEnvFile([
   'CONTAINER_MEMORY_LIMIT',
   'NANOCLAW_EGRESS_LOCKDOWN',
   'NANOCLAW_EGRESS_NETWORK',
+  'NANOCLAW_NETWORK',
   'ONECLI_GATEWAY_CONTAINER',
 ]);
 
@@ -86,6 +87,13 @@ export const EGRESS_NETWORK =
   process.env.NANOCLAW_EGRESS_NETWORK || envConfig.NANOCLAW_EGRESS_NETWORK || 'nanoclaw-egress';
 export const ONECLI_GATEWAY_CONTAINER =
   process.env.ONECLI_GATEWAY_CONTAINER || envConfig.ONECLI_GATEWAY_CONTAINER || 'onecli';
+
+// User-defined Docker network for agent containers (non-lockdown path). Empty =
+// today's behavior: containers join the default `bridge` network. When set, each
+// agent container joins ONLY this network (never bridge), letting it reach other
+// containers on it by name. The network is auto-created (plain bridge driver) if
+// absent. Ignored when egress lockdown is on — that path forces EGRESS_NETWORK.
+export const CONTAINER_NETWORK = process.env.NANOCLAW_NETWORK || envConfig.NANOCLAW_NETWORK || '';
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.
