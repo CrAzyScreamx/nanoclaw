@@ -356,8 +356,21 @@ function buildMediaMessage(data: Buffer, filename: string, ext: string, caption?
   if (audioExts.includes(ext)) {
     return { audio: data, mimetype: `audio/${ext.slice(1) === 'mp3' ? 'mpeg' : ext.slice(1)}` };
   }
-  // Default: send as document
-  return { document: data, fileName: filename, caption, mimetype: 'application/octet-stream' };
+  // Default: send as document. A known document mimetype is worth setting —
+  // WhatsApp renders a PDF inline with a page-count preview, where an
+  // octet-stream attachment is an opaque "unknown file" card.
+  const docMimes: Record<string, string> = {
+    '.pdf': 'application/pdf',
+    '.txt': 'text/plain',
+    '.csv': 'text/csv',
+    '.json': 'application/json',
+  };
+  return {
+    document: data,
+    fileName: filename,
+    caption,
+    mimetype: docMimes[ext] || 'application/octet-stream',
+  };
 }
 
 /**
