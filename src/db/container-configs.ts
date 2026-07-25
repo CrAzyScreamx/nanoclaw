@@ -10,6 +10,7 @@ const SCALAR_COLUMNS = new Set([
   'assistant_name',
   'max_messages_per_prompt',
   'cli_scope',
+  'audio_transcription',
 ]);
 const JSON_COLUMNS = new Set(['skills', 'mcp_servers', 'packages_apt', 'packages_npm', 'additional_mounts']);
 
@@ -23,7 +24,11 @@ export function getAllContainerConfigs(): ContainerConfigRow[] {
   return getDb().prepare('SELECT * FROM container_configs').all() as ContainerConfigRow[];
 }
 
-/** Insert a new config row. Caller must supply all JSON fields (use defaults for empty). */
+/** Insert a new config row. Caller must supply all JSON fields (use defaults for empty).
+ *  The switch columns (`cli_scope`, `audio_transcription`) are deliberately absent
+ *  from the column list — they take their `NOT NULL DEFAULT` from the schema
+ *  (`'group'` / `'on'`), which is also what `ensureContainerConfig`'s two-column
+ *  INSERT relies on. Adding them here would mean every caller had to carry them. */
 export function createContainerConfig(config: ContainerConfigRow): void {
   getDb()
     .prepare(
@@ -78,7 +83,14 @@ export function updateContainerConfigScalars(
   updates: Partial<
     Pick<
       ContainerConfigRow,
-      'provider' | 'model' | 'effort' | 'image_tag' | 'assistant_name' | 'max_messages_per_prompt' | 'cli_scope'
+      | 'provider'
+      | 'model'
+      | 'effort'
+      | 'image_tag'
+      | 'assistant_name'
+      | 'max_messages_per_prompt'
+      | 'cli_scope'
+      | 'audio_transcription'
     >
   >,
 ): void {
