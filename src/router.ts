@@ -148,6 +148,45 @@ export function setChannelRequestGate(fn: ChannelRequestGateFn): void {
   channelRequestGate = fn;
 }
 
+/**
+ * Audio-transcription hook. Runs per engaging agent group, immediately before
+ * the message is persisted to the session's inbound DB.
+ *
+ * Registered by the audio module. It receives the raw content JSON — at this
+ * point attachment bytes are still inline as base64, before
+ * `writeSessionMessage` → `extractAttachmentFiles` stages them to disk — and
+ * returns the content JSON to actually persist (typically the same object with
+ * a transcript folded into `text`). Without the module registered core passes
+ * the content straight through and does no extra work at all.
+ *
+ * The hook is best-effort: any throw or rejection falls back to the original
+ * content. A failed transcription must never drop or stall a message.
+ */
+export type AudioTranscriberFn = (
+  content: string,
+  ctx: { agentGroupId: string; messageId: string },
+) => Promise<string>;
+
+let audioTranscriber: AudioTranscriberFn | null = null;
+
+export function setAudioTranscriber(fn: AudioTranscriberFn): void {
+  if (audioTranscriber) {
+    log.warn('Audio transcriber overwritten');
+  }
+  audioTranscriber = fn;
+}
+
+/**
+ * Whether a module has claimed the transcriber slot. Exists so the audio
+ * module's own test can assert the modules barrel really wired it up — the
+ * skill's single reach-in into core is an import line, and a source-parse of
+ * that line stays green even when the barrel fails to evaluate. Core itself
+ * never branches on this; the call site checks the slot directly.
+ */
+export function hasAudioTranscriber(): boolean {
+  return audioTranscriber !== null;
+}
+
 function safeParseContent(raw: string): { text?: string; sender?: string; senderId?: string } {
   try {
     return JSON.parse(raw);
@@ -504,6 +543,32 @@ async function deliverToAgent(
     }
   }
 
+  // Audio transcription seam. Runs after the command gate so filtered/denied
+  // messages never pay for a transcription, and before writeSessionMessage so
+  // the module still sees attachment bytes inline (base64) rather than having
+  // to read them back off disk.
+  //
+  // ctx.messageId is the ORIGINAL event message id, deliberately NOT the
+  // per-agent namespaced one: the module memoizes on it so a message fanning
+  // out to N agent groups transcribes once, not N times. Do not "fix" this to
+  // messageIdForAgent(...) — that would defeat the memoization.
+  let content = event.message.content;
+  if (audioTranscriber) {
+    try {
+      content = await audioTranscriber(content, {
+        agentGroupId: agent.agent_group_id,
+        messageId: event.message.id,
+      });
+    } catch (err) {
+      log.warn('Audio transcriber failed — routing original content', {
+        agentGroupId: agent.agent_group_id,
+        messageId: event.message.id,
+        err,
+      });
+      content = event.message.content;
+    }
+  }
+
   writeSessionMessage(session.agent_group_id, session.id, {
     id: messageIdForAgent(event.message.id, agent.agent_group_id),
     kind: event.message.kind,
@@ -511,7 +576,7 @@ async function deliverToAgent(
     platformId: deliveryAddr.platformId,
     channelType: deliveryAddr.channelType,
     threadId: deliveryAddr.threadId,
-    content: event.message.content,
+    content,
     trigger: wake ? 1 : 0,
   });
 

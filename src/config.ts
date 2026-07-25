@@ -19,6 +19,10 @@ const envConfig = readEnvFile([
   'NANOCLAW_EGRESS_NETWORK',
   'NANOCLAW_NETWORK',
   'ONECLI_GATEWAY_CONTAINER',
+  'VOICEBOX_URL',
+  'VOICEBOX_STT_MODEL',
+  'VOICEBOX_STT_LANGUAGE',
+  'VOICEBOX_TIMEOUT_MS',
 ]);
 
 /**
@@ -94,6 +98,26 @@ export const ONECLI_GATEWAY_CONTAINER =
 // containers on it by name. The network is auto-created (plain bridge driver) if
 // absent. Ignored when egress lockdown is on — that path forces EGRESS_NETWORK.
 export const CONTAINER_NETWORK = process.env.NANOCLAW_NETWORK || envConfig.NANOCLAW_NETWORK || '';
+
+// VoiceBox speech-to-text. Empty URL = the audio-transcription module stays
+// dormant and inbound voice notes route exactly as they do today.
+export const VOICEBOX_URL = process.env.VOICEBOX_URL || envConfig.VOICEBOX_URL || '';
+// Model SIZE, bare — e.g. `ivrit-turbo`, not `whisper-ivrit-turbo`. VoiceBox is
+// inconsistent here: `/models/status` and `/models/download` name models in the
+// prefixed `whisper-<size>` form, but `/transcribe` rejects that form with HTTP
+// 400 and wants the bare `<size>`. Verified live against a running server.
+// Empty = let the server pick its default.
+export const VOICEBOX_STT_MODEL = process.env.VOICEBOX_STT_MODEL || envConfig.VOICEBOX_STT_MODEL || '';
+// Empty = let the server auto-detect the spoken language.
+export const VOICEBOX_STT_LANGUAGE = process.env.VOICEBOX_STT_LANGUAGE || envConfig.VOICEBOX_STT_LANGUAGE || '';
+// Hard ceiling on one transcription request. A voice note that can't be
+// transcribed in time must not hold up routing, so this stays modest.
+function resolveVoiceboxTimeoutMs(): number {
+  const raw = process.env.VOICEBOX_TIMEOUT_MS || envConfig.VOICEBOX_TIMEOUT_MS || '';
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60000;
+}
+export const VOICEBOX_TIMEOUT_MS = resolveVoiceboxTimeoutMs();
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.

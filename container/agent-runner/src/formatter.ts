@@ -265,6 +265,20 @@ function formatReplyContext(replyTo: any): string {
   return `\n  <quoted_message from="${escapeXml(sender)}">${escapeXml(text)}</quoted_message>\n`;
 }
 
+/**
+ * Render attachments as bracketed one-liners appended to the <message> body.
+ *
+ * Audio attachments may carry a host-produced `transcript` (voice notes are
+ * transcribed at ingest). When present it is rendered on its own line inside a
+ * `<transcript>` element: the spoken words become readable content while the
+ * file path stays available for anything the text can't convey. The tag — same
+ * XML-ish shape as `<quoted_message>` — keeps machine-produced speech
+ * distinguishable from the sender's own typed text.
+ *
+ * Absent, empty, or whitespace-only transcripts fall through to the exact
+ * pre-transcription rendering. This string is replayed into every subsequent
+ * prompt for the life of the session, so keep additions minimal.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatAttachments(attachments: any[] | undefined): string {
   if (!Array.isArray(attachments) || attachments.length === 0) return '';
@@ -273,10 +287,21 @@ function formatAttachments(attachments: any[] | undefined): string {
     const type = a.type || 'file';
     const localPath = a.localPath ? `/workspace/${a.localPath}` : '';
     const url = a.url || '';
+    const transcript = typeof a.transcript === 'string' ? a.transcript.trim() : '';
+
+    let head: string;
     if (localPath) {
-      return `[${type}: ${escapeXml(name)} — saved to ${escapeXml(localPath)}]`;
+      const saved = transcript ? 'transcribed, saved to' : 'saved to';
+      head = `[${type}: ${escapeXml(name)} — ${saved} ${escapeXml(localPath)}]`;
+    } else if (url) {
+      const note = transcript ? ' — transcribed' : '';
+      head = `[${type}: ${escapeXml(name)}${note} (${escapeXml(url)})]`;
+    } else {
+      const note = transcript ? ' — transcribed' : '';
+      head = `[${type}: ${escapeXml(name)}${note}]`;
     }
-    return url ? `[${type}: ${escapeXml(name)} (${escapeXml(url)})]` : `[${type}: ${escapeXml(name)}]`;
+
+    return transcript ? `${head}\n<transcript>${escapeXml(transcript)}</transcript>` : head;
   });
   return '\n' + parts.join('\n');
 }

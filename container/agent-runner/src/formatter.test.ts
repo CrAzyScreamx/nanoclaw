@@ -205,6 +205,230 @@ describe('XML escaping', () => {
   });
 });
 
+describe('attachment rendering', () => {
+  it('renders a plain file attachment with its saved path', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: 'here you go',
+      attachments: [{ type: 'file', name: 'report.pdf', localPath: 'inbox/m1/report.pdf' }],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('[file: report.pdf — saved to /workspace/inbox/m1/report.pdf]');
+  });
+
+  it('renders a transcript-less audio attachment exactly as before', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        { type: 'audio', name: 'note.ogg', mimeType: 'audio/ogg', localPath: 'inbox/m1/note.ogg' },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('[audio: note.ogg — saved to /workspace/inbox/m1/note.ogg]');
+    expect(result).not.toContain('transcrib');
+    expect(result).not.toContain('<transcript>');
+  });
+
+  it('falls back to the url form when there is no localPath', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [{ type: 'image', name: 'pic.png', url: 'https://example.com/pic.png' }],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('[image: pic.png (https://example.com/pic.png)]');
+  });
+});
+
+describe('audio transcripts', () => {
+  it('renders the transcript alongside the saved path', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        {
+          type: 'audio',
+          name: 'note.ogg',
+          mimeType: 'audio/ogg',
+          size: 12345,
+          localPath: 'inbox/m1/note.ogg',
+          transcript: 'can you check the deploy?',
+          transcriptModel: 'ivrit-turbo',
+        },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain(
+      '[audio: note.ogg — transcribed, saved to /workspace/inbox/m1/note.ogg]\n' +
+        '<transcript>can you check the deploy?</transcript>',
+    );
+  });
+
+  it('renders sensibly when a transcript arrives without a localPath', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        { type: 'audio', name: 'note.ogg', transcript: 'ping me when it is green' },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain(
+      '[audio: note.ogg — transcribed]\n<transcript>ping me when it is green</transcript>',
+    );
+    expect(result).not.toContain('saved to');
+  });
+
+  it('keeps the url form when a transcript arrives with a url but no localPath', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        {
+          type: 'audio',
+          name: 'note.ogg',
+          url: 'https://example.com/note.ogg',
+          transcript: 'hello there',
+        },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain(
+      '[audio: note.ogg — transcribed (https://example.com/note.ogg)]\n' +
+        '<transcript>hello there</transcript>',
+    );
+  });
+
+  it('treats an empty transcript as absent', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        { type: 'audio', name: 'note.ogg', localPath: 'inbox/m1/note.ogg', transcript: '' },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('[audio: note.ogg — saved to /workspace/inbox/m1/note.ogg]');
+    expect(result).not.toContain('<transcript>');
+    expect(result).not.toContain('transcribed');
+  });
+
+  it('treats a whitespace-only transcript as absent', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        { type: 'audio', name: 'note.ogg', localPath: 'inbox/m1/note.ogg', transcript: '   \n\t ' },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('[audio: note.ogg — saved to /workspace/inbox/m1/note.ogg]');
+    expect(result).not.toContain('<transcript>');
+    expect(result).not.toContain('transcribed');
+  });
+
+  it('ignores a non-string transcript', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        { type: 'audio', name: 'note.ogg', localPath: 'inbox/m1/note.ogg', transcript: 42 },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('[audio: note.ogg — saved to /workspace/inbox/m1/note.ogg]');
+    expect(result).not.toContain('<transcript>');
+  });
+
+  it('XML-escapes transcript content', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        {
+          type: 'audio',
+          name: 'note.ogg',
+          localPath: 'inbox/m1/note.ogg',
+          transcript: 'run <script>alert("hi")</script> & then ship it',
+        },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain(
+      '<transcript>run &lt;script&gt;alert(&quot;hi&quot;)&lt;/script&gt; &amp; then ship it</transcript>',
+    );
+    expect(result).not.toContain('<script>');
+  });
+
+  it('trims surrounding whitespace from the transcript', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        {
+          type: 'audio',
+          name: 'note.ogg',
+          localPath: 'inbox/m1/note.ogg',
+          transcript: '\n  hey there  \n',
+        },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('<transcript>hey there</transcript>');
+  });
+
+  it('leaves the transcript outside the message body text', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: 'typed words',
+      attachments: [
+        {
+          type: 'audio',
+          name: 'note.ogg',
+          localPath: 'inbox/m1/note.ogg',
+          transcript: 'spoken words',
+        },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    const typedIdx = result.indexOf('typed words');
+    const spokenIdx = result.indexOf('<transcript>spoken words</transcript>');
+    expect(typedIdx).toBeGreaterThan(0);
+    expect(spokenIdx).toBeGreaterThan(typedIdx);
+    expect(result).toContain('</transcript></message>');
+  });
+
+  it('renders each transcript when several audio attachments are present', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        { type: 'audio', name: 'a.ogg', localPath: 'inbox/m1/a.ogg', transcript: 'first note' },
+        { type: 'audio', name: 'b.ogg', localPath: 'inbox/m1/b.ogg', transcript: 'second note' },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('<transcript>first note</transcript>');
+    expect(result).toContain('<transcript>second note</transcript>');
+    expect(result.indexOf('second note')).toBeGreaterThan(result.indexOf('first note'));
+  });
+
+  it('does not transcribe-label a non-audio attachment that lacks a transcript', () => {
+    insertMessage('m1', 'chat', {
+      sender: 'Alice',
+      text: '',
+      attachments: [
+        { type: 'image', name: 'pic.png', localPath: 'inbox/m1/pic.png' },
+        { type: 'audio', name: 'note.ogg', localPath: 'inbox/m1/note.ogg', transcript: 'hi' },
+      ],
+    });
+    const result = formatMessages(getPendingMessages());
+    expect(result).toContain('[image: pic.png — saved to /workspace/inbox/m1/pic.png]');
+    expect(result).toContain('[audio: note.ogg — transcribed, saved to /workspace/inbox/m1/note.ogg]');
+  });
+});
+
 describe('stripInternalTags', () => {
   it('strips single-line internal tags and trims', () => {
     expect(stripInternalTags('hello <internal>secret</internal> world')).toBe('hello  world');
