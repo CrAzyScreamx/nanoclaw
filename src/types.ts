@@ -27,12 +27,13 @@ export interface ContainerConfigRow {
   cli_scope: string; // 'disabled' | 'group' | 'global'
   /**
    * 'on' | 'off' — inbound audio transcription for this group. Column is
-   * NOT NULL DEFAULT 'on' (migration 020), so a row read from the DB always
+   * NOT NULL DEFAULT 'on' (migration 021), so a row read from the DB always
    * carries a value; optional on the TS type per the `instance` convention so
    * literals that predate the column (e.g. the v1 backfill row) still satisfy
    * `ContainerConfigRow`. Read it default-on — `!== 'off'`, never `=== 'on'`.
    */
   audio_transcription?: string;
+  timezone: string | null; // IANA id; NULL = follow the install-global timezone
   updated_at: string;
 }
 

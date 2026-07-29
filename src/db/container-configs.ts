@@ -11,6 +11,7 @@ const SCALAR_COLUMNS = new Set([
   'max_messages_per_prompt',
   'cli_scope',
   'audio_transcription',
+  'timezone',
 ]);
 const JSON_COLUMNS = new Set(['skills', 'mcp_servers', 'packages_apt', 'packages_npm', 'additional_mounts']);
 
@@ -25,21 +26,21 @@ export function getAllContainerConfigs(): ContainerConfigRow[] {
 }
 
 /** Insert a new config row. Caller must supply all JSON fields (use defaults for empty).
- *  The switch columns (`cli_scope`, `audio_transcription`) are deliberately absent
- *  from the column list — they take their `NOT NULL DEFAULT` from the schema
- *  (`'group'` / `'on'`), which is also what `ensureContainerConfig`'s two-column
- *  INSERT relies on. Adding them here would mean every caller had to carry them. */
+ *  `audio_transcription` is deliberately absent from the column list — it's optional
+ *  on `ContainerConfigRow`, so a named-param INSERT would throw for the callers that
+ *  omit it; it takes its `NOT NULL DEFAULT 'on'` from the schema instead, which is
+ *  also what `ensureContainerConfig`'s two-column INSERT relies on. */
 export function createContainerConfig(config: ContainerConfigRow): void {
   getDb()
     .prepare(
       `INSERT INTO container_configs (
         agent_group_id, provider, model, effort, image_tag, assistant_name,
         max_messages_per_prompt, skills, mcp_servers, packages_apt, packages_npm,
-        additional_mounts, updated_at
+        additional_mounts, cli_scope, timezone, updated_at
       ) VALUES (
         @agent_group_id, @provider, @model, @effort, @image_tag, @assistant_name,
         @max_messages_per_prompt, @skills, @mcp_servers, @packages_apt, @packages_npm,
-        @additional_mounts, @updated_at
+        @additional_mounts, @cli_scope, @timezone, @updated_at
       )`,
     )
     .run(config);
@@ -91,6 +92,7 @@ export function updateContainerConfigScalars(
       | 'max_messages_per_prompt'
       | 'cli_scope'
       | 'audio_transcription'
+      | 'timezone'
     >
   >,
 ): void {
