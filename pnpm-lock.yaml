@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@nanoco/nanoclaw-dashboard@0.3.0':
+    hash: 979fc32566ce3beac1ebf344523f0c149e1660f153b37551f6b6ebf99aa65137
+    path: patches/@nanoco__nanoclaw-dashboard@0.3.0.patch
+
 importers:
 
   .:
@@ -14,6 +19,9 @@ importers:
       '@clack/prompts':
         specifier: ^1.2.0
         version: 1.2.0
+      '@nanoco/nanoclaw-dashboard':
+        specifier: ^0.3.0
+        version: 0.3.0(patch_hash=979fc32566ce3beac1ebf344523f0c149e1660f153b37551f6b6ebf99aa65137)
       '@onecli-sh/sdk':
         specifier: 2.2.1
         version: 2.2.1
@@ -504,6 +512,10 @@ packages:
 
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
+
+  '@nanoco/nanoclaw-dashboard@0.3.0':
+    resolution: {integrity: sha512-AT1sLe/PxtSMytMqXOH5xeoFw9gyYpEhXC4XIA4/940Fmw45FWAJfdQzyVRi9JZKhb2b6Qr6nqVfQRgAB3LoaA==}
+    hasBin: true
 
   '@napi-rs/wasm-runtime@1.1.4':
     resolution: {integrity: sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow==}
@@ -2326,6 +2338,8 @@ snapshots:
       keyv: 5.6.0
 
   '@keyv/serialize@1.1.1': {}
+
+  '@nanoco/nanoclaw-dashboard@0.3.0(patch_hash=979fc32566ce3beac1ebf344523f0c149e1660f153b37551f6b6ebf99aa65137)': {}
 
   '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)':
     dependencies:

@@ -1,0 +1,27 @@
+diff --git a/dist/server.js b/dist/server.js
+index f616ef5adfe7763270aa56d9685c1843819202de..bd247d42f7d8d2012357236c45234efbb7a09ac4 100644
+--- a/dist/server.js
++++ b/dist/server.js
+@@ -65,8 +65,9 @@ export function startDashboard(config = {}) {
+             }
+         }
+     });
+-    server.listen(port, '0.0.0.0', () => {
+-        console.log(`[dashboard] Started on http://localhost:${port}/dashboard`);
++    const host = config.host || '0.0.0.0';
++    server.listen(port, host, () => {
++        console.log(`[dashboard] Started on http://${host}:${port}/dashboard`);
+     });
+ }
+ export async function stopDashboard() {
+diff --git a/dist/types.d.ts b/dist/types.d.ts
+index 7cebaa62bd48eb4dfbf14336d7c0435590d33286..cb3105ea66404e7831a8cd4445102abe5e67b0eb 100644
+--- a/dist/types.d.ts
++++ b/dist/types.d.ts
+@@ -142,4 +142,6 @@ export interface ActivityBucket {
+ export interface DashboardConfig {
+     port?: number;
+     secret?: string;
++    /** Bind address. Defaults to '0.0.0.0' (all interfaces). */
++    host?: string;
+ }
