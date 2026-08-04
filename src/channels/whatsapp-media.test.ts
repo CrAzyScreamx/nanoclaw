@@ -27,7 +27,7 @@ import { initTestDb, closeDb, runMigrations, createAgentGroup } from '../db/inde
 import { createSession } from '../db/sessions.js';
 import { initSessionFolder, openInboundDb, sessionDir, writeSessionMessage } from '../session-manager.js';
 import type { Session } from '../types.js';
-import { buildAttachmentEntry } from './whatsapp.js';
+import { buildAttachmentEntry, buildMediaMessage } from './whatsapp.js';
 
 const TEST_DIR = '/tmp/nanoclaw-test-wa-media';
 const AG = 'ag-wa-media';
@@ -96,6 +96,31 @@ describe('buildAttachmentEntry', () => {
     expect(entry).not.toHaveProperty('localPath');
     expect(entry.data).toBe(Buffer.from('ogg').toString('base64'));
     expect(entry.size).toBe(3);
+  });
+});
+
+describe('buildMediaMessage: outbound voice notes', () => {
+  // A voice note sent without these two fields is accepted by WhatsApp's
+  // servers — it even echoes back — and then rendered as nothing at all by
+  // the clients, which makes the failure look like the agent never replied.
+  it('sends ogg as a voice note, naming the codec', () => {
+    const msg = buildMediaMessage(Buffer.from('OggS'), 'say.ogg', '.ogg');
+
+    expect(msg.ptt).toBe(true);
+    expect(msg.mimetype).toBe('audio/ogg; codecs=opus');
+    expect(msg.audio).toEqual(Buffer.from('OggS'));
+  });
+
+  it('treats .opus the same as .ogg', () => {
+    expect(buildMediaMessage(Buffer.from('x'), 'say.opus', '.opus').ptt).toBe(true);
+  });
+
+  it('leaves other audio as an ordinary attachment', () => {
+    // An mp3 podcast is not a voice memo; ptt would misrender it as one.
+    const msg = buildMediaMessage(Buffer.from('ID3'), 'track.mp3', '.mp3');
+
+    expect(msg.ptt).toBeUndefined();
+    expect(msg.mimetype).toBe('audio/mpeg');
   });
 });
 

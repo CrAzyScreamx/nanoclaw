@@ -1,9 +1,20 @@
 ---
 name: add-audio
-description: Let agents hear voice notes. Transcribes inbound audio from every channel via a self-hosted VoiceBox STT server, and stores the text in the session's conversation history so the agent can recall what was said weeks later. Triggers on "add audio", "voice notes", "transcribe audio", "speech to text", "STT".
+description: Let agents hear and speak. Transcribes inbound voice notes from every channel via a self-hosted VoiceBox server and stores the text in durable conversation history, and optionally lets chosen agents answer with a spoken voice note instead of text. Triggers on "add audio", "voice notes", "transcribe audio", "speech to text", "STT", "text to speech", "TTS", "voice replies", "make the agent talk".
 ---
 
-# Add Audio (VoiceBox STT)
+# Add Audio (VoiceBox)
+
+Both directions of speech, over one self-hosted VoiceBox server:
+
+- **Inbound (Phases 1–7)** — voice notes users send become text the agent reads and remembers.
+- **Outbound (Phase 8)** — chosen agents answer with a spoken voice note instead of text.
+
+Inbound is the larger install and comes first. Outbound needs only Phase 1 from it, so a
+user who wants their agent to talk but not to listen can go straight from Phase 1 to
+Phase 8.
+
+## Inbound: hearing
 
 Agents receive voice notes as a file path they cannot hear. This skill turns them into text.
 
@@ -18,6 +29,7 @@ inbound audio (any channel)
   └─ router deliverToAgent()
       ├─ audio transcriber seam        ← src/modules/audio/, wired by this skill
       │    per-group on/off → VoiceBox POST /transcribe
+      │      └─ off-language / empty / failed → optional English engine, once
       └─ writeSessionMessage → inbound.db   transcript persisted
            └─ container formatter renders the spoken text into every prompt
 ```
@@ -181,6 +193,48 @@ Ask whether the user's voice notes are predominantly one language. Supported val
 echo "VOICEBOX_STT_LANGUAGE=he" >> .env      # only when the user picks one
 ```
 
+### Offer the English fallback engine
+
+A model pinned to one language is best at that language and worse at everything else. Ask:
+
+> Fallback: when a voice note clearly isn't in **\<their language\>**, I can re-run it once
+> on a second, English engine. Costs one extra transcription on those notes only. Add one?
+
+If they left the language unset, say so and let them decide: with nothing pinned the server
+already auto-detects, so the off-language trigger can never fire and the fallback shrinks to
+a retry on a failed or empty transcription. That is worth little. Recommend skipping it.
+
+Pick the fallback engine from the same list as Phase 3 — a **general** model, not another
+specialist. `turbo` is the default answer; `base` or `small` on a CPU-only server. It must
+be downloaded (Phase 3's download + poll commands, then strip the prefix as below).
+
+```bash
+FALLBACK_MODEL="${CHOSEN_FALLBACK#whisper-}"   # whisper-turbo -> turbo
+grep -q '^VOICEBOX_STT_FALLBACK_MODEL=' .env \
+  && sed -i.bak "s|^VOICEBOX_STT_FALLBACK_MODEL=.*|VOICEBOX_STT_FALLBACK_MODEL=$FALLBACK_MODEL|" .env && rm -f .env.bak \
+  || echo "VOICEBOX_STT_FALLBACK_MODEL=$FALLBACK_MODEL" >> .env
+```
+
+The fallback runs pinned to `en` — English-only is the whole point of it. It fires on three
+conditions and no others: the primary answered outside the pinned language's script, the
+primary answered with nothing, or the primary failed for a reason other than a timeout (a
+timeout already spent the full budget; doubling it would punish the slowest clips twice).
+
+**What it cannot do — say this out loud if the user asks for more.** The trigger is script,
+and script only works one way. Measured on a live server, English speech, `language=he`:
+
+| model | pin | result |
+|---|---|---|
+| `ivrit-turbo` | `he` | `Hello, can you please book a meeting…` — Latin script, **detectable** |
+| `base` | `he` | `הלו, פליזו בוקר מידים את זה…` — Hebrew-script gibberish, **undetectable** |
+| `base` | — | `Hello, can you please book a meeting…` |
+
+A wrong pin makes Whisper transliterate confidently *into* the pinned script, and nothing in
+a `{text, duration}` response separates that from a real transcript. So the fallback rescues
+off-language notes only when the primary answers outside the pin. If a user's notes are
+genuinely mixed and their primary model does this, the fix is to drop
+`VOICEBOX_STT_LANGUAGE` entirely, not to add a fallback.
+
 Optionally raise the per-transcription timeout from its 60000ms default (worth doing on a CPU-only server):
 
 ```bash
@@ -252,9 +306,27 @@ pnpm exec tsx scripts/q.ts data/v2-sessions/<agent-group>/<session>/inbound.db \
 
 The attachment object should carry both `localPath` and `transcript`, and the agent's reply should address what was *said* rather than announcing that it received an audio file.
 
+## Phase 8: Voice replies
+
+Offer the other direction:
+
+> Voice replies: the agent can answer with a spoken voice note instead of text. Enable it?
+
+If they want it, follow [voice-replies.md](voice-replies.md) — it picks the TTS model,
+language, and voice profile, offers an English fallback voice for replies the primary voice
+can't carry, installs the `voice-reply` container skill, and enables it per agent group as
+either every reply or only when asked.
+
+That flow makes no reach-in to host code. It copies a container skill, writes a settings
+file per speaking group, and adds a standing instruction to the groups set to speak by
+default — so the guard for it is the same one those files carry: valid JSON, the skill file
+present, and a real voice note arriving in the chat.
+
 ---
 
-## Troubleshooting
+## Troubleshooting (transcription)
+
+Voice-reply problems are in [voice-replies.md](voice-replies.md#troubleshooting).
 
 **Agent replies "I received an audio file" and nothing else.** The transcript never landed. Check `logs/nanoclaw.error.log` for a warning from the audio module. Most likely `VOICEBOX_URL` is unset or unreachable from the host — re-run the Phase 1 probe.
 
@@ -263,6 +335,12 @@ The attachment object should carry both `localPath` and `transcript`, and the ag
 **`curl` reaches VoiceBox but the host logs a TLS error** (`SELF_SIGNED_CERT_IN_CHAIN`, `UNABLE_TO_VERIFY_LEAF_SIGNATURE`). `curl` and Node use different CA stores; a cert your system trusts is not automatically one Node trusts. Re-run the Node probe in Phase 1 and set `NODE_EXTRA_CA_CERTS` on the service.
 
 **Transcripts are empty or nonsense.** Usually a language mismatch — a Hebrew note through an English-only model returns plausible-sounding garbage. Set `VOICEBOX_STT_LANGUAGE`, or switch to a model matched to the language (`whisper-ivrit-turbo` for Hebrew). The original audio is still in `inbox/<msgId>/` inside the session folder, so you can re-run it by hand against a different model.
+
+**English notes still come back as gibberish in the pinned script, fallback or not.** The fallback cannot see this — the transcript looks like a valid answer in the pinned language. Clear `VOICEBOX_STT_LANGUAGE` so the server auto-detects; the table in Phase 4 has the measurements.
+
+**The fallback never fires.** `grep VOICEBOX_STT .env` and check three things: the fallback key is set, `VOICEBOX_STT_LANGUAGE` is set to a non-Latin-script language (`he ar ru el hi zh ja ko` — a Latin-script pin gives the seam no signal to work with), and the host was restarted. Every transcription logs `model=`, and a fallback also logs `fallbackReason=`, so `grep 'Transcribed inbound audio' logs/nanoclaw.log` tells you which engine actually ran.
+
+**Every voice note now takes twice as long.** The fallback is re-running on notes it shouldn't. Look at `fallbackReason` in the log: `off-language` on notes that really are in the pinned language means the primary model is answering in the wrong script — fix the primary, or drop the fallback key.
 
 **Long voice notes work, short ones don't — or vice versa.** Check `gpu_available` in `/health`. On a CPU-only server, transcription time scales with audio length; anything past `VOICEBOX_TIMEOUT_MS` falls back to delivering the audio untranscribed. Raise the timeout.
 
@@ -274,5 +352,6 @@ The attachment object should carry both `localPath` and `transcript`, and the ag
 
 - Attachments that arrive as a URL rather than inline bytes are skipped rather than fetched, so the host never issues outbound requests on behalf of an untrusted sender. This is logged at `warn`.
 - One inbound message fanned out to several agent groups is transcribed once, not once per group.
-- A transcription failure never drops or delays a message beyond its own timeout — the message routes with the audio attached, exactly as it would without this skill.
+- A transcription failure never drops a message — it routes with the audio attached, exactly as it would without this skill. Without a fallback engine the delay is bounded by `VOICEBOX_TIMEOUT_MS`; with one, a note that triggers the fallback can pay that budget twice, which is why the fallback is skipped after a timeout.
+- The fallback is instance-wide, not per-group. A group with `audio_transcription off` runs neither engine.
 - Removal: see [REMOVE.md](REMOVE.md).

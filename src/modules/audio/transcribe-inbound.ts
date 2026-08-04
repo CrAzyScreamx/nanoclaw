@@ -29,13 +29,40 @@
  * `/transcribe` call per attachment. The per-group `audio_transcription: 'off'`
  * check happens BEFORE the cache lookup, so an opted-out group neither reads nor
  * populates the cache — and makes zero network calls.
+ *
+ * ## The English fallback engine (optional, `VOICEBOX_STT_FALLBACK_MODEL`)
+ *
+ * A primary engine pinned to one language handles that language best and
+ * everything else worse. When a fallback engine is configured, a clip that the
+ * primary plainly did not handle is re-run once on that engine pinned to `en`.
+ *
+ * What "plainly did not handle" can and cannot mean was measured against a live
+ * server, and the asymmetry is the whole design (English speech, `language=he`):
+ *
+ *   ivrit-turbo + he -> "Hello, can you please book a meeting..."   Latin script
+ *   base        + he -> "הלו, פליזו בוקר מידים את זה..."             Hebrew script
+ *   base        + -- -> "Hello, can you please book a meeting..."   Latin script
+ *
+ * The first row is detectable: the pin says Hebrew, not one Hebrew character
+ * came back, so the speaker was not speaking Hebrew. The second is NOT — a wrong
+ * pin makes Whisper transliterate confidently INTO the pinned script, and
+ * nothing in a `{text, duration}` response separates that from a real
+ * transcript. So this seam catches off-language notes only when the primary
+ * answers outside the pinned script; garbage inside it is unreachable from here
+ * and is a `VOICEBOX_STT_LANGUAGE` problem, not a fallback problem.
  */
-import { VOICEBOX_URL, VOICEBOX_STT_MODEL, VOICEBOX_STT_LANGUAGE, VOICEBOX_TIMEOUT_MS } from '../../config.js';
+import {
+  VOICEBOX_URL,
+  VOICEBOX_STT_MODEL,
+  VOICEBOX_STT_LANGUAGE,
+  VOICEBOX_STT_FALLBACK_MODEL,
+  VOICEBOX_TIMEOUT_MS,
+} from '../../config.js';
 import { extForMime } from '../../attachment-naming.js';
 import { getContainerConfig } from '../../db/container-configs.js';
 import { log } from '../../log.js';
 
-import { toTranscribeModel, transcribe } from './voicebox.js';
+import { toTranscribeModel, transcribe, type TranscribeResult } from './voicebox.js';
 
 /** Attachment `type` values that mean "this is speech" across adapters. */
 const AUDIO_TYPES = new Set(['audio', 'voice']);
@@ -57,6 +84,106 @@ function cachePut(key: string, entry: CacheEntry): void {
   if (transcriptCache.size > TRANSCRIPT_CACHE_MAX) {
     const oldest = transcriptCache.keys().next().value!;
     transcriptCache.delete(oldest);
+  }
+}
+
+/** The fallback engine is English-only by definition — that is what it is for. */
+const FALLBACK_LANGUAGE = 'en';
+
+/**
+ * Languages whose script is distinctive enough that its ABSENCE from a
+ * transcript proves the speaker was not speaking the pinned language.
+ *
+ * Latin-script pins (`en`, `de`, `fr`, `es`, `it`, `pt`) are deliberately
+ * absent: German audio pinned to French comes back in the same alphabet, so
+ * there is no signal here and we must not invent one.
+ */
+const PINNED_SCRIPTS: Record<string, RegExp> = {
+  he: /[\u0590-\u05FF]/,
+  ar: /[\u0600-\u06FF]/,
+  ru: /[\u0400-\u04FF]/,
+  el: /[\u0370-\u03FF]/,
+  hi: /[\u0900-\u097F]/,
+  zh: /[\u4E00-\u9FFF]/,
+  ja: /[\u3040-\u30FF\u4E00-\u9FFF]/,
+  ko: /[\uAC00-\uD7AF\u1100-\u11FF]/,
+};
+
+const LATIN_LETTER = /[A-Za-z\u00C0-\u024F]/;
+
+/**
+ * True when `text` is confidently NOT in `pinnedLanguage`, and therefore worth
+ * a second pass on the English engine.
+ *
+ * Conservative on purpose — three ways to answer "no":
+ *   - no pin, or a pin whose script tells us nothing (Latin-script languages);
+ *   - one character of the expected script anywhere (a mostly-English Hebrew
+ *     note is still a Hebrew note, and re-running it would lose the Hebrew);
+ *   - no Latin letters either (digits and punctuation are not evidence).
+ */
+export function isOffLanguage(text: string, pinnedLanguage: string): boolean {
+  const script = PINNED_SCRIPTS[(pinnedLanguage ?? '').trim().toLowerCase()];
+  if (!script) return false;
+  if (script.test(text)) return false;
+  return LATIN_LETTER.test(text);
+}
+
+/** Why the English engine ran. Absent when the primary's answer was kept. */
+type FallbackReason = 'primary-failed' | 'empty-transcript' | 'off-language';
+
+/**
+ * A timeout already spent the whole per-clip budget; a second engine would
+ * double the delay on exactly the clips that are already slowest. Only cheap
+ * failures (HTTP 4xx/5xx, connection refused) fall through to the fallback.
+ */
+function isTimeout(err: unknown): boolean {
+  return err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+}
+
+function callVoicebox(bytes: Buffer, filename: string, model: string, language: string): Promise<TranscribeResult> {
+  return transcribe(VOICEBOX_URL, bytes, filename, { model, language, timeoutMs: VOICEBOX_TIMEOUT_MS });
+}
+
+/**
+ * One clip, at most two engines. Throws only when there is no usable transcript
+ * at all — the caller treats that as "deliver the audio untranscribed".
+ */
+async function transcribeWithFallback(
+  bytes: Buffer,
+  filename: string,
+  primaryModel: string,
+  fallbackModel: string,
+): Promise<{ result: TranscribeResult; model: string; fallback: FallbackReason | null }> {
+  let primary: TranscribeResult | undefined;
+  let reason: FallbackReason | null = null;
+
+  try {
+    primary = await callVoicebox(bytes, filename, primaryModel, VOICEBOX_STT_LANGUAGE);
+  } catch (err) {
+    if (!fallbackModel || isTimeout(err)) throw err;
+    reason = 'primary-failed';
+  }
+
+  if (primary) {
+    if (!fallbackModel) return { result: primary, model: primaryModel, fallback: null };
+    const text = primary.text.trim();
+    if (!text) reason = 'empty-transcript';
+    else if (isOffLanguage(text, VOICEBOX_STT_LANGUAGE)) reason = 'off-language';
+    else return { result: primary, model: primaryModel, fallback: null };
+  }
+
+  try {
+    const second = await callVoicebox(bytes, filename, fallbackModel, FALLBACK_LANGUAGE);
+    // An empty answer from the fallback is not an improvement on a primary that
+    // at least said something — keep whichever actually has words.
+    if (!second.text.trim() && primary?.text.trim()) {
+      return { result: primary, model: primaryModel, fallback: null };
+    }
+    return { result: second, model: fallbackModel, fallback: reason };
+  } catch (err) {
+    // The primary's own answer, however off-language, beats nothing at all.
+    if (primary) return { result: primary, model: primaryModel, fallback: null };
+    throw err;
   }
 }
 
@@ -112,6 +239,7 @@ export async function transcribeContent(
   if (!Array.isArray(attachments)) return content;
 
   const configuredModel = toTranscribeModel(VOICEBOX_STT_MODEL || '');
+  const fallbackModel = toTranscribeModel(VOICEBOX_STT_FALLBACK_MODEL || '');
   let changed = false;
 
   for (let i = 0; i < attachments.length; i++) {
@@ -143,22 +271,26 @@ export async function transcribeContent(
       // NOTE: att.data is only READ here. It must survive untouched — the
       // session-manager stages it to disk after us.
       const bytes = Buffer.from(att.data, 'base64');
-      const result = await transcribe(VOICEBOX_URL, bytes, audioFilename(att, i), {
-        model: configuredModel,
-        language: VOICEBOX_STT_LANGUAGE,
-        timeoutMs: VOICEBOX_TIMEOUT_MS,
-      });
+      const { result, model, fallback } = await transcribeWithFallback(
+        bytes,
+        audioFilename(att, i),
+        configuredModel,
+        fallbackModel,
+      );
       const text = result.text ?? '';
-      cachePut(key, { ok: true, text, model: configuredModel });
+      cachePut(key, { ok: true, text, model });
       att.transcript = text;
       // Omitted when the server default was used — we cannot know its name.
-      if (configuredModel) att.transcriptModel = configuredModel;
+      if (model) att.transcriptModel = model;
       changed = true;
       log.info('Transcribed inbound audio', {
         messageId: ctx.messageId,
         index: i,
         audioSeconds: result.duration,
         chars: text.length,
+        model: model || '(server default)',
+        // Present only when the English engine produced this text.
+        ...(fallback ? { fallbackReason: fallback } : {}),
       });
     } catch (err) {
       cachePut(key, { ok: false });

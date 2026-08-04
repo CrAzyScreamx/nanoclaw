@@ -374,16 +374,25 @@ export function buildAttachmentEntry(
 
 /** Map file extension to Baileys media message type. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildMediaMessage(data: Buffer, filename: string, ext: string, caption?: string): any {
+export function buildMediaMessage(data: Buffer, filename: string, ext: string, caption?: string): any {
   const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
   const videoExts = ['.mp4', '.mov', '.avi', '.mkv'];
   const audioExts = ['.mp3', '.ogg', '.m4a', '.wav', '.aac', '.opus'];
+  // Ogg/Opus is WhatsApp's own voice-note container. Sent as a plain audio
+  // attachment it is accepted by the server and then rendered as nothing at
+  // all by the clients: the bubble needs `ptt` to be a voice note, and the
+  // mimetype has to name the codec or the client won't decode it. Other audio
+  // formats stay ordinary attachments — an mp3 podcast is not a voice memo.
+  const voiceNoteExts = ['.ogg', '.opus'];
 
   if (imageExts.includes(ext)) {
     return { image: data, caption, mimetype: `image/${ext.slice(1) === 'jpg' ? 'jpeg' : ext.slice(1)}` };
   }
   if (videoExts.includes(ext)) {
     return { video: data, caption, mimetype: `video/${ext.slice(1)}` };
+  }
+  if (voiceNoteExts.includes(ext)) {
+    return { audio: data, mimetype: 'audio/ogg; codecs=opus', ptt: true };
   }
   if (audioExts.includes(ext)) {
     return { audio: data, mimetype: `audio/${ext.slice(1) === 'mp3' ? 'mpeg' : ext.slice(1)}` };

@@ -14,6 +14,7 @@ const configState = vi.hoisted(() => ({
   url: 'http://voicebox.local:8000',
   model: 'whisper-ivrit-turbo',
   language: 'he',
+  fallbackModel: '',
   timeoutMs: 60000,
 }));
 
@@ -31,6 +32,9 @@ vi.mock('../../config.js', () => ({
   get VOICEBOX_STT_LANGUAGE() {
     return configState.language;
   },
+  get VOICEBOX_STT_FALLBACK_MODEL() {
+    return configState.fallbackModel;
+  },
   get VOICEBOX_TIMEOUT_MS() {
     return configState.timeoutMs;
   },
@@ -40,7 +44,7 @@ vi.mock('../../db/container-configs.js', () => ({
   getContainerConfig: vi.fn(() => dbState.row),
 }));
 
-import { __clearTranscriptCache, transcribeContent } from './transcribe-inbound.js';
+import { __clearTranscriptCache, isOffLanguage, transcribeContent } from './transcribe-inbound.js';
 
 const B64 = Buffer.from('fake-audio-bytes').toString('base64');
 
@@ -61,6 +65,7 @@ beforeEach(() => {
   configState.url = 'http://voicebox.local:8000';
   configState.model = 'whisper-ivrit-turbo';
   configState.language = 'he';
+  configState.fallbackModel = '';
   configState.timeoutMs = 60000;
   dbState.row = undefined;
   __clearTranscriptCache();
@@ -287,6 +292,202 @@ describe('per-group opt-out', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(out).toBe(content);
+  });
+});
+
+describe('isOffLanguage', () => {
+  // The unit that decides whether a second engine is worth the latency. It has
+  // to answer "no" to everything it cannot prove.
+  it('is true for a Latin-script answer under a non-Latin pin', () => {
+    expect(isOffLanguage('Hello, can you book a meeting tomorrow?', 'he')).toBe(true);
+    expect(isOffLanguage('Hello there', 'ru')).toBe(true);
+  });
+
+  it('is false when one character of the pinned script is present', () => {
+    // A Hebrew note peppered with English is still a Hebrew note — re-running it
+    // on the English engine would throw the Hebrew away.
+    expect(isOffLanguage('שלח לי את ה deploy log', 'he')).toBe(false);
+    expect(isOffLanguage('שלום', 'he')).toBe(false);
+  });
+
+  it('is false for a Latin-script pin, where the script proves nothing', () => {
+    // German audio pinned to `fr` comes back in the same alphabet.
+    expect(isOffLanguage('Guten Morgen, wie geht es dir', 'fr')).toBe(false);
+    expect(isOffLanguage('שלום', 'en')).toBe(false);
+  });
+
+  it('is false with no pin at all', () => {
+    expect(isOffLanguage('Hello there', '')).toBe(false);
+  });
+
+  it('is false when there are no letters to judge', () => {
+    expect(isOffLanguage('  ...  123 ', 'he')).toBe(false);
+  });
+
+  it('handles the other non-Latin pins', () => {
+    expect(isOffLanguage('Hello', 'ja')).toBe(true);
+    expect(isOffLanguage('こんにちは', 'ja')).toBe(false);
+    expect(isOffLanguage('你好', 'zh')).toBe(false);
+    expect(isOffLanguage('안녕하세요', 'ko')).toBe(false);
+    expect(isOffLanguage('Привет', 'ru')).toBe(false);
+  });
+});
+
+describe('English fallback engine', () => {
+  const audio = JSON.stringify({ attachments: [{ type: 'audio', data: B64 }] });
+
+  function formOf(callIndex: number): FormData {
+    return fetchMock.mock.calls[callIndex][1].body as FormData;
+  }
+
+  it('does nothing when no fallback model is configured', async () => {
+    fetchMock.mockImplementation(async () => okTranscription('Hello, this is English'));
+
+    const out = JSON.parse(await transcribeContent(audio, ctx()));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(out.attachments[0].transcript).toBe('Hello, this is English');
+    expect(out.attachments[0].transcriptModel).toBe('ivrit-turbo');
+  });
+
+  it('re-runs on the English engine when the primary answers outside the pinned script', async () => {
+    configState.fallbackModel = 'turbo';
+    fetchMock
+      .mockResolvedValueOnce(okTranscription('Hello, can you book a meeting'))
+      .mockResolvedValueOnce(okTranscription('Hello, can you book a meeting tomorrow at nine'));
+
+    const out = JSON.parse(await transcribeContent(audio, ctx()));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(formOf(0).get('model')).toBe('ivrit-turbo');
+    expect(formOf(0).get('language')).toBe('he');
+    // The fallback is English-only by definition, whatever the primary pin was.
+    expect(formOf(1).get('model')).toBe('turbo');
+    expect(formOf(1).get('language')).toBe('en');
+    expect(out.attachments[0].transcript).toBe('Hello, can you book a meeting tomorrow at nine');
+    expect(out.attachments[0].transcriptModel).toBe('turbo');
+  });
+
+  it('strips the whisper- prefix from the fallback model too', async () => {
+    configState.fallbackModel = 'whisper-turbo';
+    fetchMock.mockResolvedValueOnce(okTranscription('English words')).mockResolvedValueOnce(okTranscription('better'));
+
+    await transcribeContent(audio, ctx());
+
+    expect(formOf(1).get('model')).toBe('turbo');
+  });
+
+  it('leaves a genuine Hebrew transcript alone', async () => {
+    configState.fallbackModel = 'turbo';
+    fetchMock.mockImplementation(async () => okTranscription('שלח לי את הדוח מחר בבוקר'));
+
+    const out = JSON.parse(await transcribeContent(audio, ctx()));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(out.attachments[0].transcript).toBe('שלח לי את הדוח מחר בבוקר');
+    expect(out.attachments[0].transcriptModel).toBe('ivrit-turbo');
+  });
+
+  it('falls back on an empty primary transcript', async () => {
+    configState.fallbackModel = 'turbo';
+    fetchMock.mockResolvedValueOnce(okTranscription('   ')).mockResolvedValueOnce(okTranscription('rescued'));
+
+    const out = JSON.parse(await transcribeContent(audio, ctx()));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(out.attachments[0].transcript).toBe('rescued');
+  });
+
+  it('falls back when the primary engine errors', async () => {
+    configState.fallbackModel = 'turbo';
+    fetchMock
+      .mockResolvedValueOnce(new Response('Invalid model size', { status: 400 }))
+      .mockResolvedValueOnce(okTranscription('rescued by the fallback'));
+
+    const out = JSON.parse(await transcribeContent(audio, ctx()));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(out.attachments[0].transcript).toBe('rescued by the fallback');
+    expect(out.attachments[0].transcriptModel).toBe('turbo');
+  });
+
+  it('does NOT fall back after a timeout, which already spent the whole budget', async () => {
+    configState.fallbackModel = 'turbo';
+    const timeout = new Error('The operation was aborted due to timeout');
+    timeout.name = 'TimeoutError';
+    fetchMock.mockRejectedValue(timeout);
+
+    const out = await transcribeContent(audio, ctx());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(out).toBe(audio);
+  });
+
+  it('keeps the primary answer when the fallback engine also fails', async () => {
+    configState.fallbackModel = 'turbo';
+    fetchMock
+      .mockResolvedValueOnce(okTranscription('Hello in the wrong script'))
+      .mockResolvedValueOnce(new Response('boom', { status: 500 }));
+
+    const out = JSON.parse(await transcribeContent(audio, ctx()));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(out.attachments[0].transcript).toBe('Hello in the wrong script');
+    expect(out.attachments[0].transcriptModel).toBe('ivrit-turbo');
+  });
+
+  it('keeps the primary answer when the fallback returns nothing', async () => {
+    configState.fallbackModel = 'turbo';
+    fetchMock.mockResolvedValueOnce(okTranscription('Hello there')).mockResolvedValueOnce(okTranscription(''));
+
+    const out = JSON.parse(await transcribeContent(audio, ctx()));
+
+    expect(out.attachments[0].transcript).toBe('Hello there');
+    expect(out.attachments[0].transcriptModel).toBe('ivrit-turbo');
+  });
+
+  it('delivers untranscribed when both engines fail', async () => {
+    configState.fallbackModel = 'turbo';
+    fetchMock.mockImplementation(async () => new Response('boom', { status: 500 }));
+
+    expect(await transcribeContent(audio, ctx())).toBe(audio);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('caches the fallback result, so a fanout does not re-run both engines', async () => {
+    configState.fallbackModel = 'turbo';
+    fetchMock
+      .mockResolvedValueOnce(okTranscription('English'))
+      .mockResolvedValueOnce(okTranscription('English, better'));
+
+    const a = JSON.parse(await transcribeContent(audio, { agentGroupId: 'grp-a', messageId: 'fb-fan' }));
+    const b = JSON.parse(await transcribeContent(audio, { agentGroupId: 'grp-b', messageId: 'fb-fan' }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(b.attachments[0].transcript).toBe(a.attachments[0].transcript);
+    expect(b.attachments[0].transcriptModel).toBe('turbo');
+  });
+
+  it('never falls back on language grounds when the pin is Latin-script', async () => {
+    configState.language = 'en';
+    configState.fallbackModel = 'turbo';
+    fetchMock.mockImplementation(async () => okTranscription('Guten Morgen'));
+
+    const out = JSON.parse(await transcribeContent(audio, ctx()));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(out.attachments[0].transcript).toBe('Guten Morgen');
+  });
+
+  it('never falls back on language grounds when nothing is pinned', async () => {
+    configState.language = '';
+    configState.fallbackModel = 'turbo';
+    fetchMock.mockImplementation(async () => okTranscription('Hello there'));
+
+    const out = JSON.parse(await transcribeContent(audio, ctx()));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(out.attachments[0].transcript).toBe('Hello there');
   });
 });
 

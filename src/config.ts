@@ -23,6 +23,7 @@ const envConfig = readEnvFile([
   'VOICEBOX_URL',
   'VOICEBOX_STT_MODEL',
   'VOICEBOX_STT_LANGUAGE',
+  'VOICEBOX_STT_FALLBACK_MODEL',
   'VOICEBOX_TIMEOUT_MS',
 ]);
 
@@ -118,6 +119,11 @@ export const VOICEBOX_URL = process.env.VOICEBOX_URL || envConfig.VOICEBOX_URL |
 export const VOICEBOX_STT_MODEL = process.env.VOICEBOX_STT_MODEL || envConfig.VOICEBOX_STT_MODEL || '';
 // Empty = let the server auto-detect the spoken language.
 export const VOICEBOX_STT_LANGUAGE = process.env.VOICEBOX_STT_LANGUAGE || envConfig.VOICEBOX_STT_LANGUAGE || '';
+// English-only second engine, bare form like VOICEBOX_STT_MODEL. Used when the
+// primary engine comes back with something that is plainly not the pinned
+// language, or with nothing at all. Empty = no fallback, one attempt per clip.
+export const VOICEBOX_STT_FALLBACK_MODEL =
+  process.env.VOICEBOX_STT_FALLBACK_MODEL || envConfig.VOICEBOX_STT_FALLBACK_MODEL || '';
 // Hard ceiling on one transcription request. A voice note that can't be
 // transcribed in time must not hold up routing, so this stays modest.
 function resolveVoiceboxTimeoutMs(): number {
