@@ -414,6 +414,52 @@ export function buildMediaMessage(data: Buffer, filename: string, ext: string, c
   };
 }
 
+/** Coordinates and labels carried by an outbound `location` operation. */
+export type LocationContent = {
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+};
+
+/**
+ * Build the Baileys payload for a dropped pin.
+ *
+ * WhatsApp's wire names are `degreesLatitude`/`degreesLongitude`
+ * (proto.Message.ILocationMessage) — the plain `latitude`/`longitude` the
+ * container sends are accepted by the type as optional fields and then simply
+ * not encoded, so the pin lands at 0,0 off the coast of Ghana. `name` and
+ * `address` are the two lines rendered under the map thumbnail; both are
+ * optional, and a pin with neither still shows the map.
+ */
+export function buildLocationMessage(loc: LocationContent): {
+  location: { degreesLatitude: number; degreesLongitude: number; name?: string; address?: string };
+} {
+  return {
+    location: {
+      degreesLatitude: loc.latitude,
+      degreesLongitude: loc.longitude,
+      ...(loc.name ? { name: loc.name } : {}),
+      ...(loc.address ? { address: loc.address } : {}),
+    },
+  };
+}
+
+/**
+ * Plain-text form of a pin, used when the native send can't happen — the
+ * socket is down (the outgoing queue carries text only, so a pin can't be
+ * parked in it) or Baileys rejected the payload.
+ *
+ * The container normally ships this same string as `content.text`; deriving it
+ * here as well keeps the adapter correct against an older container image that
+ * predates the fallback, and against any other producer of the operation.
+ */
+export function locationFallbackText(loc: LocationContent): string {
+  const label = [loc.name, loc.address].filter(Boolean).join(' — ');
+  const url = `https://maps.google.com/?q=${loc.latitude},${loc.longitude}`;
+  return label ? `${label}\n${url}` : url;
+}
+
 /**
  * Shared vs dedicated number mode. Only an explicit ASSISTANT_HAS_OWN_NUMBER=true
  * means the bot has its own number (dedicated); anything else — absent, empty,
@@ -1069,6 +1115,40 @@ registerChannelAdapter('whatsapp', {
             log.debug('Failed to send reaction', { platformId, err });
           }
           return;
+        }
+
+        // Location → a dropped pin on the map
+        if (content.operation === 'location') {
+          const latitude = Number(content.latitude);
+          const longitude = Number(content.longitude);
+          const loc: LocationContent = {
+            latitude,
+            longitude,
+            name: (content.name as string) || undefined,
+            address: (content.address as string) || undefined,
+          };
+          // Prefer the text the producer shipped; derive it only if absent.
+          const fallback = (content.text as string) || locationFallbackText(loc);
+
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            log.error('location has no usable coordinates — sending text instead', { platformId });
+            return sendRawMessage(platformId, fallback);
+          }
+          // sendRawMessage is the only path that queues on a dead socket, and
+          // it queues text — so degrade to the maps link rather than dropping
+          // the message while WhatsApp is reconnecting.
+          if (!connected) return sendRawMessage(platformId, fallback);
+
+          try {
+            const sent = await sock.sendMessage(platformId, buildLocationMessage(loc));
+            if (sent?.key?.id && sent.message) {
+              sentMessageCache.set(sent.key.id, sent.message);
+            }
+            return sent?.key?.id ?? undefined;
+          } catch (err) {
+            log.warn('Failed to send location, falling back to text', { platformId, err });
+            return sendRawMessage(platformId, fallback);
+          }
         }
 
         // Normal message (with optional file attachments)

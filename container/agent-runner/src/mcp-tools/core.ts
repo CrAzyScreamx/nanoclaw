@@ -1,5 +1,5 @@
 /**
- * Core MCP tools: send_message, send_file, edit_message, add_reaction.
+ * Core MCP tools: send_message, send_file, send_location, edit_message, add_reaction.
  *
  * All outbound tools resolve destinations via the local destination map
  * (see destinations.ts). Agents reference destinations by name; the map
@@ -157,6 +157,86 @@ export const sendFile: McpToolDefinition = {
   },
 };
 
+/**
+ * Plain-text rendering of a pin: a maps link, optionally titled.
+ *
+ * Rides along in the outbound blob as `text` so channels whose adapters don't
+ * implement the `location` operation still send something. Their deliver()
+ * falls through to the `content.markdown || content.text` path on an
+ * unrecognized operation (see chat-sdk-bridge.ts), so without this the message
+ * would resolve to undefined and be dropped silently.
+ */
+export function formatLocationText(loc: {
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+}): string {
+  const label = [loc.name, loc.address].filter(Boolean).join(' — ');
+  const url = `https://maps.google.com/?q=${loc.latitude},${loc.longitude}`;
+  return label ? `${label}\n${url}` : url;
+}
+
+export const sendLocation: McpToolDefinition = {
+  tool: {
+    name: 'send_location',
+    description: 'Send a map location (a dropped pin) to a named destination.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        to: { type: 'string', description: 'Destination name.' },
+        latitude: { type: 'number', description: 'Latitude in decimal degrees, -90 to 90' },
+        longitude: { type: 'number', description: 'Longitude in decimal degrees, -180 to 180' },
+        name: { type: 'string', description: 'Optional place name shown on the pin' },
+        address: { type: 'string', description: 'Optional street address shown under the pin' },
+      },
+      required: ['to', 'latitude', 'longitude'],
+    },
+  },
+  async handler(args) {
+    const to = args.to as string;
+    if (!to) return err(`to is required. Options: ${destinationList()}`);
+
+    // Validate here rather than trusting the schema: a model can pass a string,
+    // and swapped lat/lon is the classic way to land a pin in the ocean.
+    const latitude = Number(args.latitude);
+    const longitude = Number(args.longitude);
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+      return err('latitude must be a number between -90 and 90');
+    }
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      return err('longitude must be a number between -180 and 180');
+    }
+
+    const routing = resolveRouting(to);
+    if ('error' in routing) return err(routing.error);
+
+    const name = (args.name as string) || undefined;
+    const address = (args.address as string) || undefined;
+
+    const id = generateId();
+    const seq = writeMessageOut({
+      id,
+      in_reply_to: getCurrentInReplyTo(),
+      kind: 'chat',
+      platform_id: routing.platform_id,
+      channel_type: routing.channel_type,
+      thread_id: routing.thread_id,
+      content: JSON.stringify({
+        operation: 'location',
+        latitude,
+        longitude,
+        ...(name ? { name } : {}),
+        ...(address ? { address } : {}),
+        text: formatLocationText({ latitude, longitude, name, address }),
+      }),
+    });
+
+    log(`send_location: #${seq} → ${routing.resolvedName} (${latitude},${longitude})`);
+    return ok(`Location sent to ${routing.resolvedName} (id: ${seq})`);
+  },
+};
+
 export const editMessage: McpToolDefinition = {
   tool: {
     name: 'edit_message',
@@ -239,4 +319,4 @@ export const addReaction: McpToolDefinition = {
   },
 };
 
-registerTools([sendMessage, sendFile, editMessage, addReaction]);
+registerTools([sendMessage, sendFile, sendLocation, editMessage, addReaction]);

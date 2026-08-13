@@ -1,0 +1,138 @@
+[
+  {
+    "id": "rlm-line-start",
+    "rule": "Rendering 1 — every line opens with U+200F",
+    "prompt": "Send the group this week's list as three numbered lines, one item per line: milk 2 liters, eggs size L quantity 4, cottage cheese.",
+    "checks": [
+      { "type": "everyLineStartsWithRlm" },
+      { "type": "forbid", "pattern": "#\\d", "desc": "no #1-style numbering" }
+    ]
+  },
+  {
+    "id": "latin-close",
+    "rule": "Rendering 3 — close a Latin run with U+200F",
+    "prompt": "Write one line for the group saying the eggs are size L and there are 4 of them.",
+    "checks": [
+      { "type": "require", "pattern": "[A-Za-z]\\u200F", "desc": "U+200F directly after the Latin run" }
+    ]
+  },
+  {
+    "id": "no-dash-quantity",
+    "rule": "Rendering 2 — quantity in parentheses, never after a dash",
+    "prompt": "Write one line for the group: milk, quantity 2 liters.",
+    "checks": [
+      { "type": "forbid", "pattern": "[\\u0590-\\u05FF]\\s*[-\\u2013\\u2014]\\s*\\d", "desc": "no dash between Hebrew and a digit" },
+      { "type": "require", "pattern": "\\(\\s*2", "desc": "quantity parenthesised" }
+    ]
+  },
+  {
+    "id": "no-bullet-open",
+    "rule": "Rendering 5 — never open a line with a bullet or hyphen",
+    "prompt": "List for the group the three things still missing: bread, tomatoes, olive oil. One per line.",
+    "checks": [
+      { "type": "forbidLineStart", "pattern": "[\\u2022*-]", "desc": "no line opens with a bullet or hyphen" }
+    ]
+  },
+  {
+    "id": "number-gender-masculine",
+    "rule": "Counting — masculine noun takes the -ה number form",
+    "prompt": "Write one short Hebrew line telling the group that three items (\u05e4\u05e8\u05d9\u05d8\u05d9\u05dd) were added to the list. Spell the number out as a word, do not use a digit.",
+    "checks": [
+      { "type": "require", "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\u05d4", "desc": "שלושה with פריטים" },
+      { "type": "forbid", "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\s+\\u05e4\\u05e8\\u05d9\\u05d8\\u05d9\\u05dd", "desc": "not שלוש פריטים" }
+    ]
+  },
+  {
+    "id": "number-gender-feminine",
+    "rule": "Counting — feminine noun takes the short number form",
+    "prompt": "Write one short Hebrew line telling the group you added two packages (\u05d7\u05d1\u05d9\u05dc\u05d5\u05ea). Spell the number out as a word, do not use a digit.",
+    "checks": [
+      { "type": "require", "pattern": "\\u05e9\\u05ea\\u05d9", "desc": "שתי with חבילות" },
+      { "type": "forbid", "pattern": "\\u05e9\\u05e0\\u05d9\\s+\\u05d7\\u05d1\\u05d9\\u05dc\\u05d5\\u05ea", "desc": "not שני חבילות" }
+    ]
+  },
+  {
+    "id": "impersonal-address",
+    "rule": "Gender — impersonal address, no gendered second person",
+    "prompt": "The receipt photo is too blurry to read. Ask the group for a clearer one. Several people are in the group and you do not know which of them will read it.",
+    "checks": [
+      { "type": "forbid", "pattern": "\\u05d0\\u05ea\\u05d4\\b", "desc": "no אתה" },
+      { "type": "forbid", "pattern": "\\u05d0\\u05ea\\s+(\\u05d9\\u05db\\u05d5\\u05dc\\u05d4|\\u05e6\\u05e8\\u05d9\\u05db\\u05d4|\\u05e8\\u05d5\\u05e6\\u05d4|\\u05de\\u05d5\\u05d6\\u05de\\u05e0\\u05ea)", "desc": "no gendered feminine 2nd person" },
+      { "type": "forbid", "pattern": "(\\u05e9\\u05dc\\u05da|\\u05d0\\u05dc\\u05d9\\u05da|\\u05d5\\u05e2\\u05d1\\u05d5\\u05e8\\u05da)\\b", "desc": "no singular possessive/dative addressed at one gender" },
+      { "type": "require", "pattern": "(\\u05d9\\u05e9 \\u05dc|\\u05d0\\u05e4\\u05e9\\u05e8|\\u05e0\\u05d9\\u05ea\\u05df|\\u05ea\\u05e9\\u05dc\\u05d7\\u05d5|\\u05ea\\u05d5\\u05db\\u05dc\\u05d5)", "desc": "impersonal or plural form used" }
+    ]
+  },
+  {
+    "id": "no-self-gender",
+    "rule": "Gender — do not gender yourself in the present tense",
+    "prompt": "Tell the group you checked the list and everything on it is up to date.",
+    "checks": [
+      { "type": "forbid", "pattern": "\\u05d0\\u05e0\\u05d9\\s+(\\u05d1\\u05d5\\u05d3\\u05e7|\\u05d1\\u05d5\\u05d3\\u05e7\\u05ea|\\u05de\\u05d1\\u05d9\\u05df|\\u05de\\u05d1\\u05d9\\u05e0\\u05d4|\\u05e8\\u05d5\\u05d0\\u05d4)", "desc": "no gendered present-tense self reference" },
+      { "type": "require", "pattern": "(\\u05d1\\u05d3\\u05e7\\u05ea\\u05d9|\\u05e0\\u05d1\\u05d3\\u05e7|\\u05d4\\u05d1\\u05e0\\u05ea\\u05d9)", "desc": "genderless past tense or passive" }
+    ]
+  },
+  {
+    "id": "no-softeners",
+    "rule": "Tone — no padding, no corporate apology",
+    "prompt": "You could not read the receipt the group sent. Tell them, and say what you need instead.",
+    "checks": [
+      { "type": "forbid", "pattern": "(\\u05e0\\u05e9\\u05de\\u05d7 \\u05d0\\u05dd|\\u05de\\u05ea\\u05e0\\u05e6\\u05dc|\\u05d0\\u05d9 \\u05d4\\u05e0\\u05d5\\u05d7\\u05d5\\u05ea|\\u05d9\\u05d9\\u05ea\\u05db\\u05df \\u05e9\\u05db\\u05d3\\u05d0\\u05d9|\\u05e9\\u05d0\\u05dc\\u05d4 \\u05de\\u05e2\\u05d5\\u05dc\\u05d4)", "desc": "no softener boilerplate" },
+      { "type": "maxLines", "value": 3, "desc": "short — three lines or fewer" }
+    ]
+  },
+  {
+    "id": "time-24h",
+    "rule": "Formats — 24-hour clock",
+    "prompt": "Tell the group the delivery is coming at half past two in the afternoon.",
+    "checks": [
+      { "type": "forbid", "pattern": "\\d{1,2}:\\d{2}\\s*(AM|PM|am|pm)", "desc": "no 12-hour clock" },
+      { "type": "require", "pattern": "14:30", "desc": "14:30" }
+    ]
+  },
+  {
+    "id": "date-format",
+    "rule": "Formats — Israeli date order",
+    "prompt": "Tell the group the list closes on March 14th, 2026. Include the date as digits.",
+    "checks": [
+      { "type": "forbid", "pattern": "2026-0?3-14", "desc": "no ISO date" },
+      { "type": "forbid", "pattern": "\\b0?3[./]14", "desc": "no US month-first date" },
+      { "type": "require", "pattern": "14[./]0?3[./](20)?26", "desc": "day-first date" }
+    ]
+  },
+  {
+    "id": "currency",
+    "rule": "Formats — shekels in Hebrew",
+    "prompt": "Tell the group the receipt total came to 250 shekels.",
+    "checks": [
+      { "type": "require", "pattern": "(\\u05e9\"\\u05d7|\\u05e9\\u05f4\\u05d7|\\u20aa)", "desc": "ש\"ח or ₪" },
+      { "type": "forbid", "pattern": "(shekel|NIS)", "flags": "i", "desc": "no English currency name" }
+    ]
+  },
+  {
+    "id": "kdei",
+    "rule": "Grammar — כדי, never בכדי",
+    "prompt": "Write one Hebrew line: in order to close the list, the items need to be confirmed.",
+    "checks": [
+      { "type": "forbid", "pattern": "\\u05d1\\u05db\\u05d3\\u05d9", "desc": "no בכדי" },
+      { "type": "require", "pattern": "\\u05db\\u05d3\\u05d9", "desc": "כדי present" }
+    ]
+  },
+  {
+    "id": "no-nikud",
+    "rule": "Grammar — unvocalized text",
+    "prompt": "Greet the group. It is nine in the morning.",
+    "checks": [
+      { "type": "forbid", "pattern": "[\\u0591-\\u05BD\\u05BF\\u05C1\\u05C2\\u05C4\\u05C5\\u05C7]", "desc": "no nikud" },
+      { "type": "require", "pattern": "\\u05d1\\u05d5\\u05e7\\u05e8 \\u05d8\\u05d5\\u05d1", "desc": "בוקר טוב for a 09:00 greeting" }
+    ]
+  },
+  {
+    "id": "translationese",
+    "rule": "Tone — natural Hebrew, not a translation",
+    "prompt": "Open the conversation by offering to help.",
+    "checks": [
+      { "type": "forbid", "pattern": "\\u05db\\u05d9\\u05e6\\u05d3 \\u05d0\\u05e0\\u05d9 \\u05d9\\u05db\\u05d5\\u05dc \\u05dc\\u05e2\\u05d6\\u05d5\\u05e8 \\u05dc\\u05da", "desc": "no כיצד אני יכול לעזור לך" },
+      { "type": "require", "pattern": "(\\u05d0\\u05d9\\u05da \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d1\\u05de\\u05d4 \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d0\\u05d9\\u05da \\u05e0\\u05d9\\u05ea\\u05df)", "desc": "impersonal offer to help" }
+    ]
+  }
+]

@@ -1,0 +1,1968 @@
+{
+  "model": "claude-haiku-4-5-20251001",
+  "runs": 2,
+  "tally": {
+    "control": {
+      "pass": 15,
+      "total": 30
+    },
+    "skill": {
+      "pass": 30,
+      "total": 30
+    }
+  },
+  "results": [
+    {
+      "case": {
+        "id": "rlm-line-start",
+        "rule": "Rendering 1 — every line opens with U+200F",
+        "prompt": "Send the group this week's list as three numbered lines, one item per line: milk 2 liters, eggs size L quantity 4, cottage cheese.",
+        "checks": [
+          {
+            "type": "everyLineStartsWithRlm"
+          },
+          {
+            "type": "forbid",
+            "pattern": "#\\d",
+            "desc": "no #1-style numbering"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "1. חלב 2 ליטר\n2. ביצים מגודל L - 4\n3. גבינה לבנה",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "every line starts with U+200F"
+        },
+        {
+          "ok": true,
+          "desc": "no #1-style numbering"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "rlm-line-start",
+        "rule": "Rendering 1 — every line opens with U+200F",
+        "prompt": "Send the group this week's list as three numbered lines, one item per line: milk 2 liters, eggs size L quantity 4, cottage cheese.",
+        "checks": [
+          {
+            "type": "everyLineStartsWithRlm"
+          },
+          {
+            "type": "forbid",
+            "pattern": "#\\d",
+            "desc": "no #1-style numbering"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "1. חלב 2 ליטר\n2. ביצים גודל L כמות 4\n3. גבינת קוטג'",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "every line starts with U+200F"
+        },
+        {
+          "ok": true,
+          "desc": "no #1-style numbering"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "rlm-line-start",
+        "rule": "Rendering 1 — every line opens with U+200F",
+        "prompt": "Send the group this week's list as three numbered lines, one item per line: milk 2 liters, eggs size L quantity 4, cottage cheese.",
+        "checks": [
+          {
+            "type": "everyLineStartsWithRlm"
+          },
+          {
+            "type": "forbid",
+            "pattern": "#\\d",
+            "desc": "no #1-style numbering"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏1. חלב (2 ליטר)\n‏2. ביצים L‏ (4)\n‏3. גבינה לבנה",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "every line starts with U+200F"
+        },
+        {
+          "ok": true,
+          "desc": "no #1-style numbering"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "rlm-line-start",
+        "rule": "Rendering 1 — every line opens with U+200F",
+        "prompt": "Send the group this week's list as three numbered lines, one item per line: milk 2 liters, eggs size L quantity 4, cottage cheese.",
+        "checks": [
+          {
+            "type": "everyLineStartsWithRlm"
+          },
+          {
+            "type": "forbid",
+            "pattern": "#\\d",
+            "desc": "no #1-style numbering"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏1. חלב (2 ליטר)\n‏2. ביצים L‏ (4)\n‏3. קוטג'",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "every line starts with U+200F"
+        },
+        {
+          "ok": true,
+          "desc": "no #1-style numbering"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "latin-close",
+        "rule": "Rendering 3 — close a Latin run with U+200F",
+        "prompt": "Write one line for the group saying the eggs are size L and there are 4 of them.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "[A-Za-z]\\u200F",
+            "desc": "U+200F directly after the Latin run"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "יש 4 ביצים בגודל L",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "U+200F directly after the Latin run"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "latin-close",
+        "rule": "Rendering 3 — close a Latin run with U+200F",
+        "prompt": "Write one line for the group saying the eggs are size L and there are 4 of them.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "[A-Za-z]\\u200F",
+            "desc": "U+200F directly after the Latin run"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "4 ביצים מידה L",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "U+200F directly after the Latin run"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "latin-close",
+        "rule": "Rendering 3 — close a Latin run with U+200F",
+        "prompt": "Write one line for the group saying the eggs are size L and there are 4 of them.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "[A-Za-z]\\u200F",
+            "desc": "U+200F directly after the Latin run"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏ביצים L‏ (4)",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "U+200F directly after the Latin run"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "latin-close",
+        "rule": "Rendering 3 — close a Latin run with U+200F",
+        "prompt": "Write one line for the group saying the eggs are size L and there are 4 of them.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "[A-Za-z]\\u200F",
+            "desc": "U+200F directly after the Latin run"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏ביצים L‏ (4)",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "U+200F directly after the Latin run"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-dash-quantity",
+        "rule": "Rendering 2 — quantity in parentheses, never after a dash",
+        "prompt": "Write one line for the group: milk, quantity 2 liters.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "[\\u0590-\\u05FF]\\s*[-\\u2013\\u2014]\\s*\\d",
+            "desc": "no dash between Hebrew and a digit"
+          },
+          {
+            "type": "require",
+            "pattern": "\\(\\s*2",
+            "desc": "quantity parenthesised"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "חלב - 2 ליטר",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "no dash between Hebrew and a digit"
+        },
+        {
+          "ok": false,
+          "desc": "quantity parenthesised"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-dash-quantity",
+        "rule": "Rendering 2 — quantity in parentheses, never after a dash",
+        "prompt": "Write one line for the group: milk, quantity 2 liters.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "[\\u0590-\\u05FF]\\s*[-\\u2013\\u2014]\\s*\\d",
+            "desc": "no dash between Hebrew and a digit"
+          },
+          {
+            "type": "require",
+            "pattern": "\\(\\s*2",
+            "desc": "quantity parenthesised"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "חלב, כמות 2 ליטר",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no dash between Hebrew and a digit"
+        },
+        {
+          "ok": false,
+          "desc": "quantity parenthesised"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-dash-quantity",
+        "rule": "Rendering 2 — quantity in parentheses, never after a dash",
+        "prompt": "Write one line for the group: milk, quantity 2 liters.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "[\\u0590-\\u05FF]\\s*[-\\u2013\\u2014]\\s*\\d",
+            "desc": "no dash between Hebrew and a digit"
+          },
+          {
+            "type": "require",
+            "pattern": "\\(\\s*2",
+            "desc": "quantity parenthesised"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏חלב (2 ליטר)",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no dash between Hebrew and a digit"
+        },
+        {
+          "ok": true,
+          "desc": "quantity parenthesised"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-dash-quantity",
+        "rule": "Rendering 2 — quantity in parentheses, never after a dash",
+        "prompt": "Write one line for the group: milk, quantity 2 liters.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "[\\u0590-\\u05FF]\\s*[-\\u2013\\u2014]\\s*\\d",
+            "desc": "no dash between Hebrew and a digit"
+          },
+          {
+            "type": "require",
+            "pattern": "\\(\\s*2",
+            "desc": "quantity parenthesised"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏חלב (2 ליטר)",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no dash between Hebrew and a digit"
+        },
+        {
+          "ok": true,
+          "desc": "quantity parenthesised"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-bullet-open",
+        "rule": "Rendering 5 — never open a line with a bullet or hyphen",
+        "prompt": "List for the group the three things still missing: bread, tomatoes, olive oil. One per line.",
+        "checks": [
+          {
+            "type": "forbidLineStart",
+            "pattern": "[\\u2022*-]",
+            "desc": "no line opens with a bullet or hyphen"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "לחם\nעגבניות\nשמן זית",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no line opens with a bullet or hyphen"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-bullet-open",
+        "rule": "Rendering 5 — never open a line with a bullet or hyphen",
+        "prompt": "List for the group the three things still missing: bread, tomatoes, olive oil. One per line.",
+        "checks": [
+          {
+            "type": "forbidLineStart",
+            "pattern": "[\\u2022*-]",
+            "desc": "no line opens with a bullet or hyphen"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "לחם\nעגבניות\nשמן זית",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no line opens with a bullet or hyphen"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-bullet-open",
+        "rule": "Rendering 5 — never open a line with a bullet or hyphen",
+        "prompt": "List for the group the three things still missing: bread, tomatoes, olive oil. One per line.",
+        "checks": [
+          {
+            "type": "forbidLineStart",
+            "pattern": "[\\u2022*-]",
+            "desc": "no line opens with a bullet or hyphen"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏1. לחם\n‏2. עגבניות\n‏3. שמן זית",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no line opens with a bullet or hyphen"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-bullet-open",
+        "rule": "Rendering 5 — never open a line with a bullet or hyphen",
+        "prompt": "List for the group the three things still missing: bread, tomatoes, olive oil. One per line.",
+        "checks": [
+          {
+            "type": "forbidLineStart",
+            "pattern": "[\\u2022*-]",
+            "desc": "no line opens with a bullet or hyphen"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏1. לחם\n‏2. עגבניות\n‏3. שמן זיתים",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no line opens with a bullet or hyphen"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "number-gender-masculine",
+        "rule": "Counting — masculine noun takes the -ה number form",
+        "prompt": "Write one short Hebrew line telling the group that three items (פריטים) were added to the list. Spell the number out as a word, do not use a digit.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\u05d4",
+            "desc": "שלושה with פריטים"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\s+\\u05e4\\u05e8\\u05d9\\u05d8\\u05d9\\u05dd",
+            "desc": "not שלוש פריטים"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "שלוש פריטים נוספו לרשימה 📝",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "שלושה with פריטים"
+        },
+        {
+          "ok": false,
+          "desc": "not שלוש פריטים"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "number-gender-masculine",
+        "rule": "Counting — masculine noun takes the -ה number form",
+        "prompt": "Write one short Hebrew line telling the group that three items (פריטים) were added to the list. Spell the number out as a word, do not use a digit.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\u05d4",
+            "desc": "שלושה with פריטים"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\s+\\u05e4\\u05e8\\u05d9\\u05d8\\u05d9\\u05dd",
+            "desc": "not שלוש פריטים"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "שלוש פריטים נוספו לרשימה 📝",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "שלושה with פריטים"
+        },
+        {
+          "ok": false,
+          "desc": "not שלוש פריטים"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "number-gender-masculine",
+        "rule": "Counting — masculine noun takes the -ה number form",
+        "prompt": "Write one short Hebrew line telling the group that three items (פריטים) were added to the list. Spell the number out as a word, do not use a digit.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\u05d4",
+            "desc": "שלושה with פריטים"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\s+\\u05e4\\u05e8\\u05d9\\u05d8\\u05d9\\u05dd",
+            "desc": "not שלוש פריטים"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏שלושה פריטים הוספו לרשימה",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "שלושה with פריטים"
+        },
+        {
+          "ok": true,
+          "desc": "not שלוש פריטים"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "number-gender-masculine",
+        "rule": "Counting — masculine noun takes the -ה number form",
+        "prompt": "Write one short Hebrew line telling the group that three items (פריטים) were added to the list. Spell the number out as a word, do not use a digit.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\u05d4",
+            "desc": "שלושה with פריטים"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05e9\\u05dc\\u05d5\\u05e9\\s+\\u05e4\\u05e8\\u05d9\\u05d8\\u05d9\\u05dd",
+            "desc": "not שלוש פריטים"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏שלושה פריטים נוספו לרשימה",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "שלושה with פריטים"
+        },
+        {
+          "ok": true,
+          "desc": "not שלוש פריטים"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "number-gender-feminine",
+        "rule": "Counting — feminine noun takes the short number form",
+        "prompt": "Write one short Hebrew line telling the group you added two packages (חבילות). Spell the number out as a word, do not use a digit.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "\\u05e9\\u05ea\\u05d9",
+            "desc": "שתי with חבילות"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05e9\\u05e0\\u05d9\\s+\\u05d7\\u05d1\\u05d9\\u05dc\\u05d5\\u05ea",
+            "desc": "not שני חבילות"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "הוספתי שני חבילות!",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "שתי with חבילות"
+        },
+        {
+          "ok": false,
+          "desc": "not שני חבילות"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "number-gender-feminine",
+        "rule": "Counting — feminine noun takes the short number form",
+        "prompt": "Write one short Hebrew line telling the group you added two packages (חבילות). Spell the number out as a word, do not use a digit.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "\\u05e9\\u05ea\\u05d9",
+            "desc": "שתי with חבילות"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05e9\\u05e0\\u05d9\\s+\\u05d7\\u05d1\\u05d9\\u05dc\\u05d5\\u05ea",
+            "desc": "not שני חבילות"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "הוספתי שתיים חבילות! 📦",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "שתי with חבילות"
+        },
+        {
+          "ok": true,
+          "desc": "not שני חבילות"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "number-gender-feminine",
+        "rule": "Counting — feminine noun takes the short number form",
+        "prompt": "Write one short Hebrew line telling the group you added two packages (חבילות). Spell the number out as a word, do not use a digit.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "\\u05e9\\u05ea\\u05d9",
+            "desc": "שתי with חבילות"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05e9\\u05e0\\u05d9\\s+\\u05d7\\u05d1\\u05d9\\u05dc\\u05d5\\u05ea",
+            "desc": "not שני חבילות"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏הוספתי שתיים חבילות",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "שתי with חבילות"
+        },
+        {
+          "ok": true,
+          "desc": "not שני חבילות"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "number-gender-feminine",
+        "rule": "Counting — feminine noun takes the short number form",
+        "prompt": "Write one short Hebrew line telling the group you added two packages (חבילות). Spell the number out as a word, do not use a digit.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "\\u05e9\\u05ea\\u05d9",
+            "desc": "שתי with חבילות"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05e9\\u05e0\\u05d9\\s+\\u05d7\\u05d1\\u05d9\\u05dc\\u05d5\\u05ea",
+            "desc": "not שני חבילות"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏הוספתי שתי חבילות",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "שתי with חבילות"
+        },
+        {
+          "ok": true,
+          "desc": "not שני חבילות"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "impersonal-address",
+        "rule": "Gender — impersonal address, no gendered second person",
+        "prompt": "The receipt photo is too blurry to read. Ask the group for a clearer one. Several people are in the group and you do not know which of them will read it.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05ea\\u05d4\\b",
+            "desc": "no אתה"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05ea\\s+(\\u05d9\\u05db\\u05d5\\u05dc\\u05d4|\\u05e6\\u05e8\\u05d9\\u05db\\u05d4|\\u05e8\\u05d5\\u05e6\\u05d4|\\u05de\\u05d5\\u05d6\\u05de\\u05e0\\u05ea)",
+            "desc": "no gendered feminine 2nd person"
+          },
+          {
+            "type": "forbid",
+            "pattern": "(\\u05e9\\u05dc\\u05da|\\u05d0\\u05dc\\u05d9\\u05da|\\u05d5\\u05e2\\u05d1\\u05d5\\u05e8\\u05da)\\b",
+            "desc": "no singular possessive/dative addressed at one gender"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d9\\u05e9 \\u05dc|\\u05d0\\u05e4\\u05e9\\u05e8|\\u05e0\\u05d9\\u05ea\\u05df|\\u05ea\\u05e9\\u05dc\\u05d7\\u05d5|\\u05ea\\u05d5\\u05db\\u05dc\\u05d5)",
+            "desc": "impersonal or plural form used"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "תמונת התקבול מטשטשת מדי, אפשר לשלוח תמונה ברורה יותר? 🙏",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no אתה"
+        },
+        {
+          "ok": true,
+          "desc": "no gendered feminine 2nd person"
+        },
+        {
+          "ok": true,
+          "desc": "no singular possessive/dative addressed at one gender"
+        },
+        {
+          "ok": true,
+          "desc": "impersonal or plural form used"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "impersonal-address",
+        "rule": "Gender — impersonal address, no gendered second person",
+        "prompt": "The receipt photo is too blurry to read. Ask the group for a clearer one. Several people are in the group and you do not know which of them will read it.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05ea\\u05d4\\b",
+            "desc": "no אתה"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05ea\\s+(\\u05d9\\u05db\\u05d5\\u05dc\\u05d4|\\u05e6\\u05e8\\u05d9\\u05db\\u05d4|\\u05e8\\u05d5\\u05e6\\u05d4|\\u05de\\u05d5\\u05d6\\u05de\\u05e0\\u05ea)",
+            "desc": "no gendered feminine 2nd person"
+          },
+          {
+            "type": "forbid",
+            "pattern": "(\\u05e9\\u05dc\\u05da|\\u05d0\\u05dc\\u05d9\\u05da|\\u05d5\\u05e2\\u05d1\\u05d5\\u05e8\\u05da)\\b",
+            "desc": "no singular possessive/dative addressed at one gender"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d9\\u05e9 \\u05dc|\\u05d0\\u05e4\\u05e9\\u05e8|\\u05e0\\u05d9\\u05ea\\u05df|\\u05ea\\u05e9\\u05dc\\u05d7\\u05d5|\\u05ea\\u05d5\\u05db\\u05dc\\u05d5)",
+            "desc": "impersonal or plural form used"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "התמונה של הקבלה עדיין מטושטשת מדי וקשה להבין את הפרטים. אפשר שמישהו יצלם אותה שוב בתמונה ברורה יותר? תודה! 📸",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no אתה"
+        },
+        {
+          "ok": true,
+          "desc": "no gendered feminine 2nd person"
+        },
+        {
+          "ok": true,
+          "desc": "no singular possessive/dative addressed at one gender"
+        },
+        {
+          "ok": true,
+          "desc": "impersonal or plural form used"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "impersonal-address",
+        "rule": "Gender — impersonal address, no gendered second person",
+        "prompt": "The receipt photo is too blurry to read. Ask the group for a clearer one. Several people are in the group and you do not know which of them will read it.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05ea\\u05d4\\b",
+            "desc": "no אתה"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05ea\\s+(\\u05d9\\u05db\\u05d5\\u05dc\\u05d4|\\u05e6\\u05e8\\u05d9\\u05db\\u05d4|\\u05e8\\u05d5\\u05e6\\u05d4|\\u05de\\u05d5\\u05d6\\u05de\\u05e0\\u05ea)",
+            "desc": "no gendered feminine 2nd person"
+          },
+          {
+            "type": "forbid",
+            "pattern": "(\\u05e9\\u05dc\\u05da|\\u05d0\\u05dc\\u05d9\\u05da|\\u05d5\\u05e2\\u05d1\\u05d5\\u05e8\\u05da)\\b",
+            "desc": "no singular possessive/dative addressed at one gender"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d9\\u05e9 \\u05dc|\\u05d0\\u05e4\\u05e9\\u05e8|\\u05e0\\u05d9\\u05ea\\u05df|\\u05ea\\u05e9\\u05dc\\u05d7\\u05d5|\\u05ea\\u05d5\\u05db\\u05dc\\u05d5)",
+            "desc": "impersonal or plural form used"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏התמונה של הקבלה מטושטשת מדי, אפשר לשלוח תמונה ברורה יותר?",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no אתה"
+        },
+        {
+          "ok": true,
+          "desc": "no gendered feminine 2nd person"
+        },
+        {
+          "ok": true,
+          "desc": "no singular possessive/dative addressed at one gender"
+        },
+        {
+          "ok": true,
+          "desc": "impersonal or plural form used"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "impersonal-address",
+        "rule": "Gender — impersonal address, no gendered second person",
+        "prompt": "The receipt photo is too blurry to read. Ask the group for a clearer one. Several people are in the group and you do not know which of them will read it.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05ea\\u05d4\\b",
+            "desc": "no אתה"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05ea\\s+(\\u05d9\\u05db\\u05d5\\u05dc\\u05d4|\\u05e6\\u05e8\\u05d9\\u05db\\u05d4|\\u05e8\\u05d5\\u05e6\\u05d4|\\u05de\\u05d5\\u05d6\\u05de\\u05e0\\u05ea)",
+            "desc": "no gendered feminine 2nd person"
+          },
+          {
+            "type": "forbid",
+            "pattern": "(\\u05e9\\u05dc\\u05da|\\u05d0\\u05dc\\u05d9\\u05da|\\u05d5\\u05e2\\u05d1\\u05d5\\u05e8\\u05da)\\b",
+            "desc": "no singular possessive/dative addressed at one gender"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d9\\u05e9 \\u05dc|\\u05d0\\u05e4\\u05e9\\u05e8|\\u05e0\\u05d9\\u05ea\\u05df|\\u05ea\\u05e9\\u05dc\\u05d7\\u05d5|\\u05ea\\u05d5\\u05db\\u05dc\\u05d5)",
+            "desc": "impersonal or plural form used"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏לא הצלחתי לקרוא את הקבלה, אפשר לשלוח תמונה ברורה יותר?",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no אתה"
+        },
+        {
+          "ok": true,
+          "desc": "no gendered feminine 2nd person"
+        },
+        {
+          "ok": true,
+          "desc": "no singular possessive/dative addressed at one gender"
+        },
+        {
+          "ok": true,
+          "desc": "impersonal or plural form used"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-self-gender",
+        "rule": "Gender — do not gender yourself in the present tense",
+        "prompt": "Tell the group you checked the list and everything on it is up to date.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05e0\\u05d9\\s+(\\u05d1\\u05d5\\u05d3\\u05e7|\\u05d1\\u05d5\\u05d3\\u05e7\\u05ea|\\u05de\\u05d1\\u05d9\\u05df|\\u05de\\u05d1\\u05d9\\u05e0\\u05d4|\\u05e8\\u05d5\\u05d0\\u05d4)",
+            "desc": "no gendered present-tense self reference"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d1\\u05d3\\u05e7\\u05ea\\u05d9|\\u05e0\\u05d1\\u05d3\\u05e7|\\u05d4\\u05d1\\u05e0\\u05ea\\u05d9)",
+            "desc": "genderless past tense or passive"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "בדקתי את הרשימה - הכל עדכני! ✓",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no gendered present-tense self reference"
+        },
+        {
+          "ok": true,
+          "desc": "genderless past tense or passive"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-self-gender",
+        "rule": "Gender — do not gender yourself in the present tense",
+        "prompt": "Tell the group you checked the list and everything on it is up to date.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05e0\\u05d9\\s+(\\u05d1\\u05d5\\u05d3\\u05e7|\\u05d1\\u05d5\\u05d3\\u05e7\\u05ea|\\u05de\\u05d1\\u05d9\\u05df|\\u05de\\u05d1\\u05d9\\u05e0\\u05d4|\\u05e8\\u05d5\\u05d0\\u05d4)",
+            "desc": "no gendered present-tense self reference"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d1\\u05d3\\u05e7\\u05ea\\u05d9|\\u05e0\\u05d1\\u05d3\\u05e7|\\u05d4\\u05d1\\u05e0\\u05ea\\u05d9)",
+            "desc": "genderless past tense or passive"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "בדקתי את הרשימה - הכל עדכני ✅",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no gendered present-tense self reference"
+        },
+        {
+          "ok": true,
+          "desc": "genderless past tense or passive"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-self-gender",
+        "rule": "Gender — do not gender yourself in the present tense",
+        "prompt": "Tell the group you checked the list and everything on it is up to date.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05e0\\u05d9\\s+(\\u05d1\\u05d5\\u05d3\\u05e7|\\u05d1\\u05d5\\u05d3\\u05e7\\u05ea|\\u05de\\u05d1\\u05d9\\u05df|\\u05de\\u05d1\\u05d9\\u05e0\\u05d4|\\u05e8\\u05d5\\u05d0\\u05d4)",
+            "desc": "no gendered present-tense self reference"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d1\\u05d3\\u05e7\\u05ea\\u05d9|\\u05e0\\u05d1\\u05d3\\u05e7|\\u05d4\\u05d1\\u05e0\\u05ea\\u05d9)",
+            "desc": "genderless past tense or passive"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏בדקתי את הרשימה, הכל עדכני",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no gendered present-tense self reference"
+        },
+        {
+          "ok": true,
+          "desc": "genderless past tense or passive"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-self-gender",
+        "rule": "Gender — do not gender yourself in the present tense",
+        "prompt": "Tell the group you checked the list and everything on it is up to date.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d0\\u05e0\\u05d9\\s+(\\u05d1\\u05d5\\u05d3\\u05e7|\\u05d1\\u05d5\\u05d3\\u05e7\\u05ea|\\u05de\\u05d1\\u05d9\\u05df|\\u05de\\u05d1\\u05d9\\u05e0\\u05d4|\\u05e8\\u05d5\\u05d0\\u05d4)",
+            "desc": "no gendered present-tense self reference"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d1\\u05d3\\u05e7\\u05ea\\u05d9|\\u05e0\\u05d1\\u05d3\\u05e7|\\u05d4\\u05d1\\u05e0\\u05ea\\u05d9)",
+            "desc": "genderless past tense or passive"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏בדקתי, הכל עדכני",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no gendered present-tense self reference"
+        },
+        {
+          "ok": true,
+          "desc": "genderless past tense or passive"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-softeners",
+        "rule": "Tone — no padding, no corporate apology",
+        "prompt": "You could not read the receipt the group sent. Tell them, and say what you need instead.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "(\\u05e0\\u05e9\\u05de\\u05d7 \\u05d0\\u05dd|\\u05de\\u05ea\\u05e0\\u05e6\\u05dc|\\u05d0\\u05d9 \\u05d4\\u05e0\\u05d5\\u05d7\\u05d5\\u05ea|\\u05d9\\u05d9\\u05ea\\u05db\\u05df \\u05e9\\u05db\\u05d3\\u05d0\\u05d9|\\u05e9\\u05d0\\u05dc\\u05d4 \\u05de\\u05e2\\u05d5\\u05dc\\u05d4)",
+            "desc": "no softener boilerplate"
+          },
+          {
+            "type": "maxLines",
+            "value": 3,
+            "desc": "short — three lines or fewer"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "לא הצלחתי לקרוא את הקבלה שהעברתם. אפשר לשלוח אותה שוב או בפורמט אחר? 📸",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no softener boilerplate"
+        },
+        {
+          "ok": true,
+          "desc": "short — three lines or fewer"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-softeners",
+        "rule": "Tone — no padding, no corporate apology",
+        "prompt": "You could not read the receipt the group sent. Tell them, and say what you need instead.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "(\\u05e0\\u05e9\\u05de\\u05d7 \\u05d0\\u05dd|\\u05de\\u05ea\\u05e0\\u05e6\\u05dc|\\u05d0\\u05d9 \\u05d4\\u05e0\\u05d5\\u05d7\\u05d5\\u05ea|\\u05d9\\u05d9\\u05ea\\u05db\\u05df \\u05e9\\u05db\\u05d3\\u05d0\\u05d9|\\u05e9\\u05d0\\u05dc\\u05d4 \\u05de\\u05e2\\u05d5\\u05dc\\u05d4)",
+            "desc": "no softener boilerplate"
+          },
+          {
+            "type": "maxLines",
+            "value": 3,
+            "desc": "short — three lines or fewer"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "לא הצלחתי לפתוח את התמונה של התקבול 😅 אפשר לשלוח שוב או לכתוב לי בדיוק מה צריך עזרה?",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no softener boilerplate"
+        },
+        {
+          "ok": true,
+          "desc": "short — three lines or fewer"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-softeners",
+        "rule": "Tone — no padding, no corporate apology",
+        "prompt": "You could not read the receipt the group sent. Tell them, and say what you need instead.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "(\\u05e0\\u05e9\\u05de\\u05d7 \\u05d0\\u05dd|\\u05de\\u05ea\\u05e0\\u05e6\\u05dc|\\u05d0\\u05d9 \\u05d4\\u05e0\\u05d5\\u05d7\\u05d5\\u05ea|\\u05d9\\u05d9\\u05ea\\u05db\\u05df \\u05e9\\u05db\\u05d3\\u05d0\\u05d9|\\u05e9\\u05d0\\u05dc\\u05d4 \\u05de\\u05e2\\u05d5\\u05dc\\u05d4)",
+            "desc": "no softener boilerplate"
+          },
+          {
+            "type": "maxLines",
+            "value": 3,
+            "desc": "short — three lines or fewer"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏לא הצלחתי לקרוא את הקבלה, תשלחו תמונה ברורה יותר",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no softener boilerplate"
+        },
+        {
+          "ok": true,
+          "desc": "short — three lines or fewer"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-softeners",
+        "rule": "Tone — no padding, no corporate apology",
+        "prompt": "You could not read the receipt the group sent. Tell them, and say what you need instead.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "(\\u05e0\\u05e9\\u05de\\u05d7 \\u05d0\\u05dd|\\u05de\\u05ea\\u05e0\\u05e6\\u05dc|\\u05d0\\u05d9 \\u05d4\\u05e0\\u05d5\\u05d7\\u05d5\\u05ea|\\u05d9\\u05d9\\u05ea\\u05db\\u05df \\u05e9\\u05db\\u05d3\\u05d0\\u05d9|\\u05e9\\u05d0\\u05dc\\u05d4 \\u05de\\u05e2\\u05d5\\u05dc\\u05d4)",
+            "desc": "no softener boilerplate"
+          },
+          {
+            "type": "maxLines",
+            "value": 3,
+            "desc": "short — three lines or fewer"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏לא הצלחתי לקרוא את הקבלה, תשלחו תמונה ברורה יותר",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no softener boilerplate"
+        },
+        {
+          "ok": true,
+          "desc": "short — three lines or fewer"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "time-24h",
+        "rule": "Formats — 24-hour clock",
+        "prompt": "Tell the group the delivery is coming at half past two in the afternoon.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\d{1,2}:\\d{2}\\s*(AM|PM|am|pm)",
+            "desc": "no 12-hour clock"
+          },
+          {
+            "type": "require",
+            "pattern": "14:30",
+            "desc": "14:30"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "ההזמנה תגיע בשעה שתיים וחצי בצהריים 📦",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no 12-hour clock"
+        },
+        {
+          "ok": false,
+          "desc": "14:30"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "time-24h",
+        "rule": "Formats — 24-hour clock",
+        "prompt": "Tell the group the delivery is coming at half past two in the afternoon.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\d{1,2}:\\d{2}\\s*(AM|PM|am|pm)",
+            "desc": "no 12-hour clock"
+          },
+          {
+            "type": "require",
+            "pattern": "14:30",
+            "desc": "14:30"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "ההזמנה באה בשעה חצי שתיים אחה\"ץ",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no 12-hour clock"
+        },
+        {
+          "ok": false,
+          "desc": "14:30"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "time-24h",
+        "rule": "Formats — 24-hour clock",
+        "prompt": "Tell the group the delivery is coming at half past two in the afternoon.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\d{1,2}:\\d{2}\\s*(AM|PM|am|pm)",
+            "desc": "no 12-hour clock"
+          },
+          {
+            "type": "require",
+            "pattern": "14:30",
+            "desc": "14:30"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏המשלוח מגיע בשעה 14:30",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no 12-hour clock"
+        },
+        {
+          "ok": true,
+          "desc": "14:30"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "time-24h",
+        "rule": "Formats — 24-hour clock",
+        "prompt": "Tell the group the delivery is coming at half past two in the afternoon.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\d{1,2}:\\d{2}\\s*(AM|PM|am|pm)",
+            "desc": "no 12-hour clock"
+          },
+          {
+            "type": "require",
+            "pattern": "14:30",
+            "desc": "14:30"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏המשלוח מגיע בשעה 14:30",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no 12-hour clock"
+        },
+        {
+          "ok": true,
+          "desc": "14:30"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "date-format",
+        "rule": "Formats — Israeli date order",
+        "prompt": "Tell the group the list closes on March 14th, 2026. Include the date as digits.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "2026-0?3-14",
+            "desc": "no ISO date"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\b0?3[./]14",
+            "desc": "no US month-first date"
+          },
+          {
+            "type": "require",
+            "pattern": "14[./]0?3[./](20)?26",
+            "desc": "day-first date"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "הרשימה סוגרת ביום 14.3.2026",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no ISO date"
+        },
+        {
+          "ok": true,
+          "desc": "no US month-first date"
+        },
+        {
+          "ok": true,
+          "desc": "day-first date"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "date-format",
+        "rule": "Formats — Israeli date order",
+        "prompt": "Tell the group the list closes on March 14th, 2026. Include the date as digits.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "2026-0?3-14",
+            "desc": "no ISO date"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\b0?3[./]14",
+            "desc": "no US month-first date"
+          },
+          {
+            "type": "require",
+            "pattern": "14[./]0?3[./](20)?26",
+            "desc": "day-first date"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "הרשימה נסגרת ב-14.3.2026 🗓️",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no ISO date"
+        },
+        {
+          "ok": true,
+          "desc": "no US month-first date"
+        },
+        {
+          "ok": true,
+          "desc": "day-first date"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "date-format",
+        "rule": "Formats — Israeli date order",
+        "prompt": "Tell the group the list closes on March 14th, 2026. Include the date as digits.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "2026-0?3-14",
+            "desc": "no ISO date"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\b0?3[./]14",
+            "desc": "no US month-first date"
+          },
+          {
+            "type": "require",
+            "pattern": "14[./]0?3[./](20)?26",
+            "desc": "day-first date"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏הרשימה נסגרת ב-14/03/2026",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no ISO date"
+        },
+        {
+          "ok": true,
+          "desc": "no US month-first date"
+        },
+        {
+          "ok": true,
+          "desc": "day-first date"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "date-format",
+        "rule": "Formats — Israeli date order",
+        "prompt": "Tell the group the list closes on March 14th, 2026. Include the date as digits.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "2026-0?3-14",
+            "desc": "no ISO date"
+          },
+          {
+            "type": "forbid",
+            "pattern": "\\b0?3[./]14",
+            "desc": "no US month-first date"
+          },
+          {
+            "type": "require",
+            "pattern": "14[./]0?3[./](20)?26",
+            "desc": "day-first date"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏הרשימה סוגרת ב-14/03/2026",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no ISO date"
+        },
+        {
+          "ok": true,
+          "desc": "no US month-first date"
+        },
+        {
+          "ok": true,
+          "desc": "day-first date"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "currency",
+        "rule": "Formats — shekels in Hebrew",
+        "prompt": "Tell the group the receipt total came to 250 shekels.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "(\\u05e9\"\\u05d7|\\u05e9\\u05f4\\u05d7|\\u20aa)",
+            "desc": "ש\"ח or ₪"
+          },
+          {
+            "type": "forbid",
+            "pattern": "(shekel|NIS)",
+            "flags": "i",
+            "desc": "no English currency name"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "ההוצאה הסתכמה ל-250 שקלים 💰",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "ש\"ח or ₪"
+        },
+        {
+          "ok": true,
+          "desc": "no English currency name"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "currency",
+        "rule": "Formats — shekels in Hebrew",
+        "prompt": "Tell the group the receipt total came to 250 shekels.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "(\\u05e9\"\\u05d7|\\u05e9\\u05f4\\u05d7|\\u20aa)",
+            "desc": "ש\"ח or ₪"
+          },
+          {
+            "type": "forbid",
+            "pattern": "(shekel|NIS)",
+            "flags": "i",
+            "desc": "no English currency name"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "הסכום בחשבון הגיע ל-250 שקלים 💰",
+      "checks": [
+        {
+          "ok": false,
+          "desc": "ש\"ח or ₪"
+        },
+        {
+          "ok": true,
+          "desc": "no English currency name"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "currency",
+        "rule": "Formats — shekels in Hebrew",
+        "prompt": "Tell the group the receipt total came to 250 shekels.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "(\\u05e9\"\\u05d7|\\u05e9\\u05f4\\u05d7|\\u20aa)",
+            "desc": "ש\"ח or ₪"
+          },
+          {
+            "type": "forbid",
+            "pattern": "(shekel|NIS)",
+            "flags": "i",
+            "desc": "no English currency name"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏הקבלה הסתכמה ל-250 ש\"ח",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "ש\"ח or ₪"
+        },
+        {
+          "ok": true,
+          "desc": "no English currency name"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "currency",
+        "rule": "Formats — shekels in Hebrew",
+        "prompt": "Tell the group the receipt total came to 250 shekels.",
+        "checks": [
+          {
+            "type": "require",
+            "pattern": "(\\u05e9\"\\u05d7|\\u05e9\\u05f4\\u05d7|\\u20aa)",
+            "desc": "ש\"ח or ₪"
+          },
+          {
+            "type": "forbid",
+            "pattern": "(shekel|NIS)",
+            "flags": "i",
+            "desc": "no English currency name"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏סה\"כ הקבלה: 250 ש\"ח",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "ש\"ח or ₪"
+        },
+        {
+          "ok": true,
+          "desc": "no English currency name"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "kdei",
+        "rule": "Grammar — כדי, never בכדי",
+        "prompt": "Write one Hebrew line: in order to close the list, the items need to be confirmed.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d1\\u05db\\u05d3\\u05d9",
+            "desc": "no בכדי"
+          },
+          {
+            "type": "require",
+            "pattern": "\\u05db\\u05d3\\u05d9",
+            "desc": "כדי present"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "כדי לסגור את הרשימה, צריך לאשר את כל הפריטים",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no בכדי"
+        },
+        {
+          "ok": true,
+          "desc": "כדי present"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "kdei",
+        "rule": "Grammar — כדי, never בכדי",
+        "prompt": "Write one Hebrew line: in order to close the list, the items need to be confirmed.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d1\\u05db\\u05d3\\u05d9",
+            "desc": "no בכדי"
+          },
+          {
+            "type": "require",
+            "pattern": "\\u05db\\u05d3\\u05d9",
+            "desc": "כדי present"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "כדי לסגור את הרשימה, צריך לאשר את הפריטים.",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no בכדי"
+        },
+        {
+          "ok": true,
+          "desc": "כדי present"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "kdei",
+        "rule": "Grammar — כדי, never בכדי",
+        "prompt": "Write one Hebrew line: in order to close the list, the items need to be confirmed.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d1\\u05db\\u05d3\\u05d9",
+            "desc": "no בכדי"
+          },
+          {
+            "type": "require",
+            "pattern": "\\u05db\\u05d3\\u05d9",
+            "desc": "כדי present"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏יש לאשר את הפריטים כדי לסגור את הרשימה",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no בכדי"
+        },
+        {
+          "ok": true,
+          "desc": "כדי present"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "kdei",
+        "rule": "Grammar — כדי, never בכדי",
+        "prompt": "Write one Hebrew line: in order to close the list, the items need to be confirmed.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05d1\\u05db\\u05d3\\u05d9",
+            "desc": "no בכדי"
+          },
+          {
+            "type": "require",
+            "pattern": "\\u05db\\u05d3\\u05d9",
+            "desc": "כדי present"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏כדי לסגור את הרשימה, יש לאשר את הפריטים.",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no בכדי"
+        },
+        {
+          "ok": true,
+          "desc": "כדי present"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-nikud",
+        "rule": "Grammar — unvocalized text",
+        "prompt": "Greet the group. It is nine in the morning.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "[\\u0591-\\u05BD\\u05BF\\u05C1\\u05C2\\u05C4\\u05C5\\u05C7]",
+            "desc": "no nikud"
+          },
+          {
+            "type": "require",
+            "pattern": "\\u05d1\\u05d5\\u05e7\\u05e8 \\u05d8\\u05d5\\u05d1",
+            "desc": "בוקר טוב for a 09:00 greeting"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "בוקר טוב לכולם! ☀️",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no nikud"
+        },
+        {
+          "ok": true,
+          "desc": "בוקר טוב for a 09:00 greeting"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-nikud",
+        "rule": "Grammar — unvocalized text",
+        "prompt": "Greet the group. It is nine in the morning.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "[\\u0591-\\u05BD\\u05BF\\u05C1\\u05C2\\u05C4\\u05C5\\u05C7]",
+            "desc": "no nikud"
+          },
+          {
+            "type": "require",
+            "pattern": "\\u05d1\\u05d5\\u05e7\\u05e8 \\u05d8\\u05d5\\u05d1",
+            "desc": "בוקר טוב for a 09:00 greeting"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "בוקר טוב לכולם! ☀️ איזה בוקר יפה, בואו נתחיל את היום! 😊",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no nikud"
+        },
+        {
+          "ok": true,
+          "desc": "בוקר טוב for a 09:00 greeting"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-nikud",
+        "rule": "Grammar — unvocalized text",
+        "prompt": "Greet the group. It is nine in the morning.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "[\\u0591-\\u05BD\\u05BF\\u05C1\\u05C2\\u05C4\\u05C5\\u05C7]",
+            "desc": "no nikud"
+          },
+          {
+            "type": "require",
+            "pattern": "\\u05d1\\u05d5\\u05e7\\u05e8 \\u05d8\\u05d5\\u05d1",
+            "desc": "בוקר טוב for a 09:00 greeting"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏בוקר טוב ☀️",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no nikud"
+        },
+        {
+          "ok": true,
+          "desc": "בוקר טוב for a 09:00 greeting"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "no-nikud",
+        "rule": "Grammar — unvocalized text",
+        "prompt": "Greet the group. It is nine in the morning.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "[\\u0591-\\u05BD\\u05BF\\u05C1\\u05C2\\u05C4\\u05C5\\u05C7]",
+            "desc": "no nikud"
+          },
+          {
+            "type": "require",
+            "pattern": "\\u05d1\\u05d5\\u05e7\\u05e8 \\u05d8\\u05d5\\u05d1",
+            "desc": "בוקר טוב for a 09:00 greeting"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏בוקר טוב! 🌅",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no nikud"
+        },
+        {
+          "ok": true,
+          "desc": "בוקר טוב for a 09:00 greeting"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "translationese",
+        "rule": "Tone — natural Hebrew, not a translation",
+        "prompt": "Open the conversation by offering to help.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05db\\u05d9\\u05e6\\u05d3 \\u05d0\\u05e0\\u05d9 \\u05d9\\u05db\\u05d5\\u05dc \\u05dc\\u05e2\\u05d6\\u05d5\\u05e8 \\u05dc\\u05da",
+            "desc": "no כיצד אני יכול לעזור לך"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d0\\u05d9\\u05da \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d1\\u05de\\u05d4 \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d0\\u05d9\\u05da \\u05e0\\u05d9\\u05ea\\u05df)",
+            "desc": "impersonal offer to help"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 0,
+      "output": "שלום לכולם! 👋 \nאני פה בשביל לעזור לכם בכל מה שצריך. אם יש לכם שאלה, צריך עזרה עם משהו, או רוצים שאסדר משהו - פשוט כתבו לי! 😊",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no כיצד אני יכול לעזור לך"
+        },
+        {
+          "ok": false,
+          "desc": "impersonal offer to help"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "translationese",
+        "rule": "Tone — natural Hebrew, not a translation",
+        "prompt": "Open the conversation by offering to help.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05db\\u05d9\\u05e6\\u05d3 \\u05d0\\u05e0\\u05d9 \\u05d9\\u05db\\u05d5\\u05dc \\u05dc\\u05e2\\u05d6\\u05d5\\u05e8 \\u05dc\\u05da",
+            "desc": "no כיצד אני יכול לעזור לך"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d0\\u05d9\\u05da \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d1\\u05de\\u05d4 \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d0\\u05d9\\u05da \\u05e0\\u05d9\\u05ea\\u05df)",
+            "desc": "impersonal offer to help"
+          }
+        ]
+      },
+      "arm": "control",
+      "run": 1,
+      "output": "שלום לכם! 👋 אני כאן כדי לעזור לכם. מה אוכל לעשות בשבילכם היום?",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no כיצד אני יכול לעזור לך"
+        },
+        {
+          "ok": false,
+          "desc": "impersonal offer to help"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "translationese",
+        "rule": "Tone — natural Hebrew, not a translation",
+        "prompt": "Open the conversation by offering to help.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05db\\u05d9\\u05e6\\u05d3 \\u05d0\\u05e0\\u05d9 \\u05d9\\u05db\\u05d5\\u05dc \\u05dc\\u05e2\\u05d6\\u05d5\\u05e8 \\u05dc\\u05da",
+            "desc": "no כיצד אני יכול לעזור לך"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d0\\u05d9\\u05da \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d1\\u05de\\u05d4 \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d0\\u05d9\\u05da \\u05e0\\u05d9\\u05ea\\u05df)",
+            "desc": "impersonal offer to help"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 0,
+      "output": "‏איך אפשר לעזור?",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no כיצד אני יכול לעזור לך"
+        },
+        {
+          "ok": true,
+          "desc": "impersonal offer to help"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "translationese",
+        "rule": "Tone — natural Hebrew, not a translation",
+        "prompt": "Open the conversation by offering to help.",
+        "checks": [
+          {
+            "type": "forbid",
+            "pattern": "\\u05db\\u05d9\\u05e6\\u05d3 \\u05d0\\u05e0\\u05d9 \\u05d9\\u05db\\u05d5\\u05dc \\u05dc\\u05e2\\u05d6\\u05d5\\u05e8 \\u05dc\\u05da",
+            "desc": "no כיצד אני יכול לעזור לך"
+          },
+          {
+            "type": "require",
+            "pattern": "(\\u05d0\\u05d9\\u05da \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d1\\u05de\\u05d4 \\u05d0\\u05e4\\u05e9\\u05e8|\\u05d0\\u05d9\\u05da \\u05e0\\u05d9\\u05ea\\u05df)",
+            "desc": "impersonal offer to help"
+          }
+        ]
+      },
+      "arm": "skill",
+      "run": 1,
+      "output": "‏שלום! איך אפשר לעזור?",
+      "checks": [
+        {
+          "ok": true,
+          "desc": "no כיצד אני יכול לעזור לך"
+        },
+        {
+          "ok": true,
+          "desc": "impersonal offer to help"
+        }
+      ]
+    }
+  ]
+}
