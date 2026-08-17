@@ -54,7 +54,7 @@ voice-agent/
 │   ├── elevenlabs.md                   #   the required key: permissions, vault entry, verification
 │   ├── phone-number.md                 #   carrier choice and the dashboard import
 │   ├── hangup-twilio.md                #   optional: the Twilio credential that buys hang-up
-│   └── guardrails.md                   #   the key credit cap, dial approval gate and sweep cadence
+│   └── guardrails.md                   #   the key credit cap, the dial rule and sweep cadence
 ├── ai.nanoco.nanoclaw/
 │   ├── context/
 │   │   ├── instructions.md             # the persona — confirm before every dial
