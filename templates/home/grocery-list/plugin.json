@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "grocery-list",
+  "version": "1.0.0",
+  "description": "Household grocery-list agent: a weekly list in chat, model-classified aisles, and a printable shopping sheet",
+  "author": { "name": "Amit Yanay", "url": "https://github.com/CrAzyScreamx" },
+  "extensions": {
+    "ai.nanoco.nanoclaw": {
+      "agentName": "Markety"
+    }
+  }
+}

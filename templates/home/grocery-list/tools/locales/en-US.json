@@ -1,0 +1,63 @@
+{
+  "tag": "en-US",
+  "dir": "ltr",
+  "categories": [
+    { "key": "produce", "name": "Produce", "sort": 0 },
+    { "key": "bakery", "name": "Bakery", "sort": 10 },
+    { "key": "dairy", "name": "Dairy, cheese & eggs", "sort": 20 },
+    { "key": "meat-fish", "name": "Meat, poultry & fish", "sort": 30 },
+    { "key": "frozen", "name": "Frozen", "sort": 40 },
+    { "key": "pantry", "name": "Pantry", "sort": 50 },
+    { "key": "snacks", "name": "Snacks & sweets", "sort": 60 },
+    { "key": "drinks", "name": "Drinks", "sort": 70 },
+    { "key": "household", "name": "Household & cleaning", "sort": 80 },
+    { "key": "toiletries", "name": "Toiletries", "sort": 90 },
+    { "key": "other", "name": "Other", "sort": 9999, "catchAll": true }
+  ],
+  "strings": {
+    "listHeading": "Shopping list",
+    "listEmpty": "The list is empty",
+    "emptyShort": "(empty)",
+    "markBought": "✓",
+    "markPending": "○",
+    "confirmMark": "✓",
+    "confirmAdded": "Added",
+    "confirmUpdated": "Updated",
+    "mergeTail": "— now {total}",
+    "newProductTail": "— new product ✨",
+
+    "weekSummary": "Week {week} — {total} total, {bought} bought, {pending} not bought",
+    "closedWeekSummary": "The week that closed ({week}): {total} total, {bought} bought, {pending} not bought",
+    "newWeekOpened": "A new week opened — {week}",
+    "sectionBought": "Bought:",
+    "sectionNotBought": "Not bought:",
+    "sectionStillPending": "Still not marked bought:",
+    "sectionCarriedNew": "Carried into the new week:",
+    "sectionCarriedCurrent": "Carried into the current week:",
+    "markedBoughtCount": "Marked bought: {count}",
+    "carrySkipped": "Already on the list, not copied: {names}",
+    "noRotation": "No week rollover — the current week opened on {week}",
+    "rotationAlreadyDone": "(the rollover already happened; the items came over from week {week})",
+    "noOpenWeek": "(no open week)",
+    "noSuchWeek": "(no such week)",
+
+    "sheetTitle": "Shopping list",
+    "sheetFilenameStem": "shopping-list",
+    "printSubmitted": "Sent to {queue}.",
+
+    "promptAisleUser": "Aisles:\n{categories}\n\nProduct: {name}\n\nAisle:",
+    "promptIdentityUser": "Name as typed: {typed}\n\nProducts already on file:\n{options}\n\nAnswer:"
+  },
+  "errors": {
+    "listEmptyNothingToPrint": "The list is empty — there is nothing to print.",
+    "pdfFailed": "Rendering the PDF failed.",
+    "printConfirmRequired": "Paper print: {pages} page(s) to {queue}. This needs a yes before it is sent.",
+    "printQueueMissing": "No printer is configured — there is nowhere to send the job.",
+    "lpMissing": "The lp command is not installed, so paper printing is not available from here.",
+    "printFailed": "Submitting the print job failed."
+  },
+  "prompts": {
+    "aisle": "You sort grocery products into supermarket aisles.\nYou are given a product name and a list of aisles. Answer with the single best-fitting aisle, from that list only, word for word, with no explanation, no punctuation and no extra text.\nIf the product does not clearly belong to any aisle, answer with the last aisle in the list.",
+    "identity": "You decide whether a name written on a shopping list refers to a product that is already on file.\nTwo names are the same product only if they describe exactly the same item on the shelf — different spelling, a typo, an abbreviation, or a full name against a short one.\nA difference in size, quantity, flavour, colour, variety, fat percentage or brand means DIFFERENT products, however similar the names look.\nAnswer with the number of the identical product only, or 0 if none of them is the same product. No explanation, no punctuation, no extra text."
+  }
+}

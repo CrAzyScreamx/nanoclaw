@@ -1,0 +1,63 @@
+{
+  "tag": "he-IL",
+  "dir": "rtl",
+  "categories": [
+    { "key": "produce", "name": "ירקות ופירות", "sort": 0 },
+    { "key": "bakery", "name": "מאפייה", "sort": 10 },
+    { "key": "dairy", "name": "חלב, גבינות וביצים", "sort": 20 },
+    { "key": "meat-fish", "name": "בשר, עוף ודגים", "sort": 30 },
+    { "key": "frozen", "name": "קפואים", "sort": 40 },
+    { "key": "pantry", "name": "מזווה", "sort": 50 },
+    { "key": "snacks", "name": "חטיפים ומתוקים", "sort": 60 },
+    { "key": "drinks", "name": "משקאות", "sort": 70 },
+    { "key": "household", "name": "בית וניקיון", "sort": 80 },
+    { "key": "toiletries", "name": "טואלטיקה", "sort": 90 },
+    { "key": "other", "name": "שונות", "sort": 9999, "catchAll": true }
+  ],
+  "strings": {
+    "listHeading": "רשימת קניות",
+    "listEmpty": "הרשימה ריקה",
+    "emptyShort": "(ריק)",
+    "markBought": "✓",
+    "markPending": "○",
+    "confirmMark": "✓",
+    "confirmAdded": "הוספתי",
+    "confirmUpdated": "עדכנתי",
+    "mergeTail": "— עכשיו {total}",
+    "newProductTail": "— מוצר חדש ✨",
+
+    "weekSummary": "שבוע {week} — סה\"כ {total}, נקנו {bought}, לא נקנו {pending}",
+    "closedWeekSummary": "השבוע שנסגר ({week}): סה\"כ {total}, נקנו {bought}, לא נקנו {pending}",
+    "newWeekOpened": "שבוע חדש נפתח — {week}",
+    "sectionBought": "נקנה:",
+    "sectionNotBought": "לא נקנה:",
+    "sectionStillPending": "עדיין לא סומן כנקנה:",
+    "sectionCarriedNew": "הועבר לשבוע החדש:",
+    "sectionCarriedCurrent": "הועבר לשבוע הנוכחי:",
+    "markedBoughtCount": "סומנו כנקנו: {count}",
+    "carrySkipped": "כבר ברשימה, לא הועתק: {names}",
+    "noRotation": "לא בוצע מעבר שבוע — השבוע הנוכחי נפתח ב-{week}",
+    "rotationAlreadyDone": "(המעבר כבר בוצע קודם; הפריטים הועברו משבוע {week})",
+    "noOpenWeek": "(אין שבוע פתוח)",
+    "noSuchWeek": "(אין שבוע כזה)",
+
+    "sheetTitle": "רשימת קניות",
+    "sheetFilenameStem": "רשימת-קניות",
+    "printSubmitted": "נשלח להדפסה אל {queue}.",
+
+    "promptAisleUser": "מחלקות:\n{categories}\n\nמוצר: {name}\n\nמחלקה:",
+    "promptIdentityUser": "שם שנכתב: {typed}\n\nמוצרים קיימים:\n{options}\n\nתשובה:"
+  },
+  "errors": {
+    "listEmptyNothingToPrint": "הרשימה ריקה — אין מה להדפיס.",
+    "pdfFailed": "יצירת ה-PDF נכשלה.",
+    "printConfirmRequired": "הדפסה על נייר: {pages} עמודים אל {queue}. צריך אישור לפני שליחה.",
+    "printQueueMissing": "לא הוגדרה מדפסת — אין לאן לשלוח את ההדפסה.",
+    "lpMissing": "הפקודה lp אינה מותקנת, אז אי אפשר להדפיס על נייר מכאן.",
+    "printFailed": "שליחת ההדפסה נכשלה."
+  },
+  "prompts": {
+    "aisle": "אתה ממיין מוצרי מכולת למחלקות בסופרמרקט ישראלי.\nתקבל שם של מוצר ורשימת מחלקות. ענה בשם המחלקה המתאימה ביותר, מתוך הרשימה בלבד, מילה במילה, בלי ניקוד, בלי הסבר, בלי סימני פיסוק ובלי טקסט נוסף.\nאם המוצר לא שייך באופן ברור לאף מחלקה, ענה בשם המחלקה האחרונה ברשימה.",
+    "identity": "אתה עוזר לזהות אם שם שנכתב ברשימת קניות מתייחס למוצר שכבר קיים ברשימה.\nשני שמות הם אותו מוצר רק אם הם מתארים בדיוק את אותו פריט על המדף — כתיב שונה, שגיאת כתיב, קיצור, או שם מלא מול שם מקוצר.\nשוני בגודל, בכמות, בטעם, בצבע, בסוג, באחוז שומן או במותג = מוצרים שונים, גם אם השמות דומים מאוד.\nענה במספר של המוצר הזהה בלבד, או 0 אם אף אחד מהם אינו אותו מוצר. בלי הסבר, בלי פיסוק ובלי טקסט נוסף."
+  }
+}
