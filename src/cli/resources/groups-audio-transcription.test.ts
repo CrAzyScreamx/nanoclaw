@@ -28,7 +28,7 @@ const TEST_DIR = '/tmp/nanoclaw-test-cli-audio';
 
 import { initTestDb, closeDb, runMigrations, createAgentGroup, getDb } from '../../db/index.js';
 import { migrations } from '../../db/migrations/index.js';
-import { migration022 } from '../../db/migrations/022-audio-transcription.js';
+import { migration023 } from '../../db/migrations/023-audio-transcription.js';
 import { ensureContainerConfig, getContainerConfig } from '../../db/container-configs.js';
 import { dispatch } from '../dispatch.js';
 // Side-effect import: registers the `groups-*` commands.
@@ -110,7 +110,7 @@ describe('migration 020', () => {
     // the way a live install would have had one before the upgrade.
     runMigrations(
       db,
-      migrations.filter((m) => m.name !== migration022.name),
+      migrations.filter((m) => m.name !== migration023.name),
     );
     createAgentGroup({ id: GID, name: 'legacy', folder: 'legacy', agent_provider: null, created_at: now() });
     ensureContainerConfig(GID);
@@ -118,11 +118,11 @@ describe('migration 020', () => {
       'audio_transcription',
     );
 
-    runMigrations(db, [migration022]);
+    runMigrations(db, [migration023]);
 
     expect(getContainerConfig(GID)!.audio_transcription).toBe('on');
     expect(
-      (db.prepare('SELECT COUNT(*) AS c FROM schema_version WHERE name = ?').get(migration022.name) as { c: number }).c,
+      (db.prepare('SELECT COUNT(*) AS c FROM schema_version WHERE name = ?').get(migration023.name) as { c: number }).c,
     ).toBe(1);
   });
 });
