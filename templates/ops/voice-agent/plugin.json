@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "voice-agent",
+  "version": "1.0.0",
+  "description": "Phone-line operator agent: answers inbound calls and places outbound ones through ElevenLabs voice agents",
+  "author": { "name": "Amit Yanay", "url": "https://github.com/CrAzyScreamx" }
+}
