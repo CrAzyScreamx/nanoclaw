@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>NanoClaw · Local web chat</title>
+    <link rel="stylesheet" href="/local-web-page.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <div class="identity">
+          <div id="breath" class="breath" aria-hidden="true"></div>
+          <div>
+            <p class="eyebrow">Local only · 127.0.0.1</p>
+            <h1>NanoClaw</h1>
+          </div>
+        </div>
+        <div id="status" class="status" role="status">Connecting…</div>
+      </header>
+      <section id="messages" role="log" aria-live="polite" aria-label="Conversation"></section>
+      <div id="activity" class="activity" role="status" hidden>
+        <span class="activity-dot" aria-hidden="true"></span>
+        <span id="activity-label">Thinking…</span>
+      </div>
+      <form id="composer">
+        <label class="sr-only" for="message">Message your agent</label>
+        <textarea
+          id="message"
+          maxlength="8000"
+          rows="1"
+          placeholder="Message your agent…"
+          autocomplete="off"
+        ></textarea>
+        <button id="send" type="submit" disabled>Send</button>
+      </form>
+    </main>
+    <script src="/local-web-page.js" defer></script>
+  </body>
+</html>
