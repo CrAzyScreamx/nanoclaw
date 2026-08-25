@@ -28,6 +28,9 @@
   const themeButton = document.querySelector('#theme');
   const jump = document.querySelector('#jump');
   const counter = document.querySelector('#counter');
+  const shell = document.querySelector('.shell');
+  const header = document.querySelector('header');
+  const dock = document.querySelector('.dock');
   const activity = document.querySelector('#activity');
   const activityLabel = document.querySelector('#activity-label');
   let activityTimer = null;
@@ -110,8 +113,14 @@
   function isAtBottom() {
     return messages.scrollHeight - messages.scrollTop - messages.clientHeight < stickyBottomPx;
   }
-  function scrollToLatest(smooth = true) {
-    messages.scrollTo({ top: messages.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  // 'instant', never 'auto': 'auto' defers to CSS scroll-behavior, and an
+  // animated follow leaves isAtBottom() reading false while it runs, so a burst
+  // of appends would stop following after the first one. A scrollTo behavior
+  // also outranks the stylesheet, so reduced motion has to be checked here.
+  function scrollToLatest(smooth = false) {
+    const animate = smooth && !reducedMotion.matches;
+    messages.scrollTo({ top: messages.scrollHeight, behavior: animate ? 'smooth' : 'instant' });
     jump.hidden = true;
   }
   function settleScroll(wasAtBottom) {
@@ -122,9 +131,22 @@
     if (isAtBottom()) jump.hidden = true;
   });
   jump.addEventListener('click', () => {
-    scrollToLatest();
+    scrollToLatest(true);
     input.focus();
   });
+
+  // The transcript scrolls the full height of the window, under chrome that
+  // floats on top of it, so its padding has to track the real chrome heights:
+  // the composer alone grows from 46px to 200px as you type. Called from the
+  // two things that change those heights rather than from a ResizeObserver,
+  // which only delivers while the tab is actually rendering.
+  function syncChrome() {
+    const pinned = isAtBottom();
+    shell.style.setProperty('--header-h', `${header.offsetHeight}px`);
+    shell.style.setProperty('--dock-h', `${dock.offsetHeight}px`);
+    if (pinned) scrollToLatest();
+  }
+  window.addEventListener('resize', syncChrome);
 
   // ---- rendering --------------------------------------------------------
   function labelFor(role) {
@@ -357,7 +379,7 @@
     else addMessage(item.role === 'user' ? 'user' : 'agent', item.text, false, item.html);
   }
   if (transcript.length === 0) showEmptyState();
-  else scrollToLatest(false);
+  else scrollToLatest();
 
   function showNotAuthorized() {
     send.disabled = true;
@@ -478,6 +500,7 @@
   function resize() {
     input.style.height = 'auto';
     input.style.height = `${Math.min(input.scrollHeight, 200)}px`;
+    syncChrome();
   }
   function updateCounter() {
     const remaining = maxLength - input.value.length;
@@ -528,4 +551,5 @@
     updateCounter();
   });
   input.focus();
+  syncChrome();
 })();

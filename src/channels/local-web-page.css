@@ -30,6 +30,9 @@
   --shadow-lg: 0 1px 2px rgb(26 22 18 / 5%), 0 14px 38px rgb(26 22 18 / 9%);
   --ring: rgb(31 184 176 / 40%);
 
+  --column-max: 760px;
+  --column: min(var(--column-max), 100%);
+  --gutter: clamp(18px, 5vw, 40px);
   --measure: 66ch;
   --fs-body: 19px;
   --fs-chrome: 14px;
@@ -99,7 +102,9 @@ body {
   margin: 0;
   height: 100dvh;
   overflow: hidden;
-  background: var(--ground);
+  /* One surface. There is no card floating on a ground: the window is the
+     surface, chrome floats on it, and the reading column is centred within it. */
+  background: var(--paper);
   color: var(--ink-body);
   -webkit-font-smoothing: antialiased;
 }
@@ -108,24 +113,65 @@ body {
 
 .shell {
   position: relative;
-  width: min(900px, 100%);
+  width: 100%;
   height: 100dvh;
-  min-height: 0;
-  margin: auto;
-  padding: 22px clamp(18px, 4vw, 40px) clamp(16px, 3vw, 26px);
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
-  background: var(--paper);
-  border-inline: 1px solid var(--hairline);
+  /* Measured from the live chrome so the transcript can scroll the full height
+     underneath it without ever resting behind it. */
+  --header-h: 74px;
+  --dock-h: 104px;
 }
 
+/* Floating chrome: a translucent layer the transcript passes under, with the
+   material fading out at its inner edge instead of ending on a 1px rule. */
+header,
+.dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding-inline: max(var(--gutter), calc((100% - var(--column-max)) / 2));
+}
+header::before,
+.dock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Opaque enough that the logotype and status stay legible over whatever
+     scrolls beneath them, translucent enough to still read as material. */
+  background: color-mix(in oklab, var(--paper) 82%, transparent);
+  backdrop-filter: blur(24px) saturate(180%);
+  pointer-events: none;
+}
 header {
+  top: 0;
+  background: linear-gradient(to bottom, var(--paper) 42%, transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding-bottom: 10px;
+  padding-block: 18px 14px;
+}
+header::before {
+  mask-image: linear-gradient(to bottom, #000 58%, transparent);
+}
+header > * {
+  position: relative;
+  z-index: 1;
+}
+.dock {
+  bottom: 0;
+  background: linear-gradient(to top, var(--paper) 48%, transparent);
+  padding-block: 46px 14px;
+}
+.dock::before {
+  mask-image: linear-gradient(to top, #000 62%, transparent);
+}
+.dock > * {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin-inline: auto;
 }
 .identity {
   display: grid;
@@ -257,33 +303,27 @@ h1 {
 /* ---- transcript -------------------------------------------------------- */
 
 .log-wrap {
-  position: relative;
-  min-height: 0;
-  display: grid;
+  position: absolute;
+  inset: 0;
 }
 #messages {
-  --fade: 34px;
-  min-height: 0;
+  height: 100%;
   overflow-y: auto;
-  /* The bottom padding is deeper than the fade, so at rest the gradient lands
-     on empty space and never dims the newest message. */
-  padding: 20px 2px 46px;
+  /* No mask here on purpose: content stays sharp so the chrome above it has
+     something real to blur. The scrollbar is left at the window edge. */
+  padding: calc(var(--header-h) + 10px) var(--gutter) calc(var(--dock-h) + 18px);
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 26px;
   overscroll-behavior: contain;
-  scroll-behavior: smooth;
-  /* Scroll edge effect: content dissolves into the chrome above and below
-     instead of being sliced by a hard edge. */
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    #000 var(--fade),
-    #000 calc(100% - var(--fade)),
-    transparent 100%
-  );
 }
 
+.turn,
+.question-card,
+.empty {
+  width: var(--column);
+}
 .turn {
   display: grid;
   gap: 7px;
@@ -504,7 +544,7 @@ pre:hover .copy,
 /* ---- approval card ----------------------------------------------------- */
 
 .question-card {
-  width: min(560px, 100%);
+  max-width: 560px;
   padding: 16px 18px 18px;
   border: 1px solid var(--hairline);
   border-left: 3px solid var(--brand);
@@ -686,7 +726,7 @@ pre:hover .copy,
 .jump {
   position: absolute;
   left: 50%;
-  bottom: 12px;
+  bottom: calc(var(--dock-h) - 34px);
   translate: -50% 0;
   display: flex;
   align-items: center;
@@ -723,8 +763,8 @@ pre:hover .copy,
    shove the composer down and back up on every single turn. */
 .activity {
   position: absolute;
-  left: 2px;
-  bottom: 12px;
+  left: max(var(--gutter), calc((100% - var(--column-max)) / 2));
+  bottom: calc(var(--dock-h) - 34px);
   display: flex;
   align-items: center;
   gap: 9px;
@@ -832,7 +872,7 @@ textarea::placeholder {
   justify-content: center;
   gap: 12px;
   min-height: 14px;
-  margin: 10px 2px 0;
+  margin: 10px 0 0;
   color: var(--ink-muted);
   font-size: 12px;
   line-height: 1;
@@ -913,9 +953,11 @@ kbd {
     --fs-body: 17px;
     --measure: 100%;
   }
-  .shell {
-    padding: 16px 15px 12px;
-    border-inline: 0;
+  header {
+    padding-block: 14px 18px;
+  }
+  .dock {
+    padding-block: 34px 12px;
   }
   .logotype {
     width: 124px;
@@ -928,10 +970,6 @@ kbd {
   }
   .hint-keys {
     display: none;
-  }
-  form {
-    position: sticky;
-    bottom: 0;
   }
   #messages {
     gap: 22px;
@@ -966,6 +1004,16 @@ kbd {
   .activity {
     background: var(--paper);
     backdrop-filter: none;
+  }
+  header,
+  .dock {
+    background: var(--paper);
+  }
+  header::before,
+  .dock::before {
+    background: var(--paper);
+    backdrop-filter: none;
+    mask-image: none;
   }
 }
 @media (prefers-contrast: more) {
