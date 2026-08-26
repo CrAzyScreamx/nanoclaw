@@ -953,6 +953,7 @@ export class MattermostAdapter implements Adapter<MattermostThreadId, Mattermost
       });
       return new Response('Bad request', { status: 400 });
     }
+    event.threadId = (await this.actionThreadId(payload)) ?? event.threadId;
 
     const chat = this.chat;
     if (!chat) {
@@ -960,8 +961,8 @@ export class MattermostAdapter implements Adapter<MattermostThreadId, Mattermost
       return this.actionResponse();
     }
 
-    // Remember the clicked post as a card post even if this process never
-    // wrote it (restart mid-question), so the follow-up edit can clear it.
+    // A failed recovery still needs the old best-effort cache entry so the
+    // follow-up edit knows this was a card and can clear its actions.
     if (payload.post_id && !this.cardPosts.has(payload.post_id)) {
       this.cardPosts.set(payload.post_id, { props: {}, threadId: event.threadId });
     }
@@ -1012,6 +1013,36 @@ export class MattermostAdapter implements Adapter<MattermostThreadId, Mattermost
       user: this.projectAuthor(userId, { fallbackUserName: payload.user_name }),
       ...(rawValue === undefined ? {} : { value: String(rawValue) }),
     };
+  }
+
+  /**
+   * Recover a card's rooted thread after a process restart.
+   *
+   * Mattermost's callback body carries `channel_id` and `post_id`, but omits
+   * the post's `root_id`. The in-memory card cache handles clicks during one
+   * process lifetime; after restart, read the post once so the action reaches
+   * the same thread and preserve its non-card props for the terminal edit.
+   */
+  private async actionThreadId(payload: PostActionIntegrationRequest): Promise<string | undefined> {
+    if (!payload.post_id) {
+      return undefined;
+    }
+    const cached = this.cardPosts.get(payload.post_id);
+    if (cached) {
+      return cached.threadId;
+    }
+    try {
+      const post = await this.rest.getPost(payload.post_id);
+      const threadId = threadIdForPost(post);
+      this.rememberCardPost(post, threadId);
+      return threadId;
+    } catch (error) {
+      this.logger.debug('Mattermost action callback: could not recover posting thread', {
+        error,
+        postId: payload.post_id,
+      });
+      return undefined;
+    }
   }
 
   /** Empty `PostActionIntegrationResponse` — accept the click, change nothing. */
