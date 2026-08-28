@@ -129,14 +129,6 @@ const {
     getOwners(): any[] {
       return state.roles.filter((r) => r.role === 'owner');
     },
-    hasAdminPrivilege(userId: string, agentGroupId: string): boolean {
-      return state.roles.some(
-        (r) =>
-          r.user_id === userId &&
-          (r.role === 'owner' ||
-            (r.role === 'admin' && (r.agent_group_id === null || r.agent_group_id === agentGroupId))),
-      );
-    },
   };
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -207,7 +199,6 @@ vi.mock('../../db/sessions.js', () => ({
 vi.mock('../permissions/db/user-roles.js', () => ({
   grantRole: fakeDb.grantRole,
   getOwners: fakeDb.getOwners,
-  hasAdminPrivilege: fakeDb.hasAdminPrivilege,
 }));
 
 import { createAgentGroup } from '../../db/agent-groups.js';
@@ -795,14 +786,14 @@ describe('slack channel-card interceptor — owner-presence rule (B2/D24)', () =
       event,
       fyiText:
         'FYI: Stranger (slack:U0STRANGER) DMed your agent on Slack — I sent a polite decline. ' +
-        'Slack DMs are admin-only — allow them with `ncl roles grant`.',
+        "This agent's Slack DM is private to its paired user.",
     });
     expect(mockRecordDropped).toHaveBeenCalledTimes(1);
     expect(await getMessagingGroupAgents(dm.id)).toHaveLength(0);
     expect(mockRouteInbound).not.toHaveBeenCalled();
   });
 
-  it('owner DM with decline_notify policy: never declined — card fallback', async () => {
+  it('unpaired owner DM with decline_notify policy: declines, no card', async () => {
     await seedOwnerAndInstanceDm();
     const dm = await mg({
       id: 'mg-dm-owner',
@@ -813,11 +804,17 @@ describe('slack channel-card interceptor — owner-presence rule (B2/D24)', () =
     mockApi.slackConversationsInfo.mockResolvedValue({ isMpim: false, creator: OPERATOR });
 
     const event = mentionEvent('slack:D0OWNER', { isGroup: false, senderId: OPERATOR, senderName: 'Gavriel' });
-    expect(await intercept(dm, event)).toBe('card');
-    expect(mockDeclineAndNotify).not.toHaveBeenCalled();
+    expect(await intercept(dm, event)).toBe('handled');
+    expect(mockDeclineAndNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messagingGroupId: dm.id,
+        agentGroupId: 'ag-andy',
+        senderIdentity: `slack:${OPERATOR}`,
+      }),
+    );
   });
 
-  it('admin (not owner) of the target agent group DM: still cards', async () => {
+  it('unpaired admin DM: declines, no card', async () => {
     await seedOwnerAndInstanceDm();
     const admin = 'U0ADMIN';
     await grantRole({
@@ -836,11 +833,13 @@ describe('slack channel-card interceptor — owner-presence rule (B2/D24)', () =
     mockApi.slackConversationsInfo.mockResolvedValue({ isMpim: false, creator: admin });
 
     const event = mentionEvent('slack:D0ADMIN', { isGroup: false, senderId: admin, senderName: 'Admin' });
-    expect(await intercept(dm, event)).toBe('card');
-    expect(mockDeclineAndNotify).not.toHaveBeenCalled();
+    expect(await intercept(dm, event)).toBe('handled');
+    expect(mockDeclineAndNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ messagingGroupId: dm.id, agentGroupId: 'ag-andy', senderIdentity: `slack:${admin}` }),
+    );
   });
 
-  it('known agent-group member without admin privilege is declined, no card', async () => {
+  it('unpaired known-member DM is declined, no card', async () => {
     await seedOwnerAndInstanceDm();
     const dm = await mg({
       id: 'mg-dm-member',
@@ -850,17 +849,11 @@ describe('slack channel-card interceptor — owner-presence rule (B2/D24)', () =
     });
     mockApi.slackConversationsInfo.mockResolvedValue({ isMpim: false, creator: 'U0MEMBER' });
 
-    // A channel-approved member with no admin/owner role must still be declined.
     const event = mentionEvent('slack:D0MEMBER', { isGroup: false, senderId: 'U0MEMBER', senderName: 'Member' });
     expect(await intercept(dm, event)).toBe('handled');
     expect(mockDeclineAndNotify).toHaveBeenCalledTimes(1);
-    // The owner FYI must hint the remedy that actually unlocks a Slack DM
-    // with the admin gate (`ncl roles grant`) — never `ncl members add`, which no
-    // longer opens the DM and would loop the sender back into this decline.
     const fyi = (mockDeclineAndNotify.mock.calls[0][0] as { fyiText?: string }).fyiText ?? '';
-    expect(fyi).toContain('admin-only');
-    expect(fyi).toContain('ncl roles grant');
-    expect(fyi).not.toContain('ncl members add');
+    expect(fyi).toContain('private to its paired user');
     expect(await getMessagingGroupAgents(dm.id)).toHaveLength(0);
   });
 
@@ -884,13 +877,13 @@ describe('slack channel-card interceptor — owner-presence rule (B2/D24)', () =
       senderIdentity: 'slack:U0STRANGER',
       senderName: 'Stranger',
       event,
-      fyiText: expect.stringContaining('allow them with `ncl roles grant`'),
+      fyiText: expect.stringContaining('private to its paired user'),
     });
     // The D24 flip is stamped onto the row so the DB matches the behavior.
     expect(await getMessagingGroup(dm.id)).toMatchObject({ unknown_sender_policy: 'decline_notify' });
   });
 
-  it("1:1 DM with an operator-set 'strict' or 'public' policy keeps today's card", async () => {
+  it("unpaired 1:1 DM declines and stamps decline_notify despite a stored 'strict' or 'public' policy", async () => {
     await seedOwnerAndInstanceDm();
     for (const policy of ['strict', 'public'] as const) {
       const dm = await mg({
@@ -901,17 +894,17 @@ describe('slack channel-card interceptor — owner-presence rule (B2/D24)', () =
       });
       mockApi.slackConversationsInfo.mockResolvedValue({ isMpim: false, creator: 'U0STRANGER' });
       expect(await intercept(dm, mentionEvent(dm.platform_id, { isGroup: false, senderId: 'U0STRANGER' }))).toBe(
-        'card',
+        'handled',
       );
-      expect(await getMessagingGroup(dm.id)).toMatchObject({ unknown_sender_policy: policy });
+      expect(await getMessagingGroup(dm.id)).toMatchObject({ unknown_sender_policy: 'decline_notify' });
     }
-    expect(mockDeclineAndNotify).not.toHaveBeenCalled();
+    expect(mockDeclineAndNotify).toHaveBeenCalledTimes(2);
   });
 
-  it('stranger 1:1 DM with ambiguous instance→agent-group resolution: card, no decline', async () => {
+  it('unpaired 1:1 DM with ambiguous instance→agent-group resolution: declines, no card', async () => {
     await seedOwnerAndInstanceDm();
-    // A second DM wiring on the same instance to a different agent group —
-    // privileged senders can't be recognized, so nobody may be declined.
+    // A second DM wiring on the same instance makes group resolution ambiguous,
+    // but must not turn an unpaired DM into a registration card.
     const dm2 = await mg({ id: 'mg-dm-pixel', platform_id: 'slack:D0PIXEL', is_group: 0 });
     await wire(dm2.id, 'ag-pixel');
     const dm = await mg({
@@ -922,8 +915,11 @@ describe('slack channel-card interceptor — owner-presence rule (B2/D24)', () =
     });
     mockApi.slackConversationsInfo.mockResolvedValue({ isMpim: false, creator: 'U0STRANGER' });
 
-    expect(await intercept(dm, mentionEvent('slack:D0AMBIG', { isGroup: false, senderId: 'U0STRANGER' }))).toBe('card');
-    expect(mockDeclineAndNotify).not.toHaveBeenCalled();
+    expect(await intercept(dm, mentionEvent('slack:D0AMBIG', { isGroup: false, senderId: 'U0STRANGER' }))).toBe(
+      'handled',
+    );
+    expect(mockDeclineAndNotify).toHaveBeenCalledWith(expect.objectContaining({ agentGroupId: null }));
+    expect(mockRecordDropped).toHaveBeenCalledWith(expect.objectContaining({ agent_group_id: null }));
   });
 
   it('conversations.members failure: card fallback (never silent loss)', async () => {
