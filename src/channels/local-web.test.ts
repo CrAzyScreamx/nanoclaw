@@ -96,6 +96,16 @@ afterEach(async () => {
 });
 
 describe('local web adapter', () => {
+  it('keeps long-running progress visible without adding a speculative transcript message', () => {
+    const script = fs.readFileSync(path.join(process.cwd(), 'src/channels/local-web-page.js'), 'utf8');
+    const styles = fs.readFileSync(path.join(process.cwd(), 'src/channels/local-web-page.css'), 'utf8');
+
+    expect(script).toContain("activityLabel.textContent = 'Still working'");
+    expect(script).not.toContain('No reply yet');
+    expect(styles).toContain('z-index: 3');
+    expect(styles).toContain('env(safe-area-inset-bottom)');
+  });
+
   it('resolves host-initiated DMs to the live chat id so approval cards reach the browser', async () => {
     const { registry } = await startAdapter();
     try {

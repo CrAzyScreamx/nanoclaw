@@ -119,7 +119,7 @@ body {
   /* Measured from the live chrome so the transcript can scroll the full height
      underneath it without ever resting behind it. */
   --header-h: 74px;
-  --dock-h: 104px;
+  --dock-h: 112px;
 }
 
 /* Floating chrome: a translucent layer the transcript passes under, with the
@@ -162,7 +162,7 @@ header > * {
 .dock {
   bottom: 0;
   background: linear-gradient(to top, var(--paper) 48%, transparent);
-  padding-block: 46px 14px;
+  padding-block: 46px max(22px, env(safe-area-inset-bottom));
 }
 .dock::before {
   mask-image: linear-gradient(to top, #000 62%, transparent);
@@ -763,6 +763,7 @@ pre:hover .copy,
    shove the composer down and back up on every single turn. */
 .activity {
   position: absolute;
+  z-index: 3;
   left: max(var(--gutter), calc((100% - var(--column-max)) / 2));
   bottom: calc(var(--dock-h) - 34px);
   display: flex;
@@ -957,7 +958,7 @@ kbd {
     padding-block: 14px 18px;
   }
   .dock {
-    padding-block: 34px 12px;
+    padding-block: 34px max(18px, env(safe-area-inset-bottom));
   }
   .logotype {
     width: 124px;

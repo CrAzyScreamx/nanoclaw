@@ -16,7 +16,6 @@
   const counterThreshold = 400;
   const stickyBottomPx = 96;
   const activityIdleMs = 10_000;
-  const silentTurnMs = 180_000;
 
   const root = document.documentElement;
   const messages = document.querySelector('#messages');
@@ -34,7 +33,6 @@
   const activity = document.querySelector('#activity');
   const activityLabel = document.querySelector('#activity-label');
   let activityTimer = null;
-  let silentTurnTimer = null;
 
   // ---- theme ------------------------------------------------------------
   // No stored choice means follow the OS; the button writes an explicit one.
@@ -320,24 +318,6 @@
       activity.classList.remove('tool');
     }, activityIdleMs);
   }
-  // A turn can complete backend-side and deliver nothing, with no error event.
-  // Rather than leave the pill spinning forever, say so after a long silence.
-  function beginTurn() {
-    clearTimeout(silentTurnTimer);
-    silentTurnTimer = setTimeout(() => {
-      setActivity(null);
-      setState('Ready', 'ready');
-      addMessage(
-        'system',
-        'No reply yet. The turn may still be running, or it may have finished without sending one.',
-        false,
-      );
-    }, silentTurnMs);
-  }
-  function endTurn() {
-    clearTimeout(silentTurnTimer);
-    silentTurnTimer = null;
-  }
   /** The full-height state the log shows when it holds no conversation. */
   function renderEmptyState({ heading, body, note, locked = false }) {
     clearEmptyState();
@@ -451,7 +431,6 @@
         setActivity(`Using ${data.name}`, true);
       }
       if (data.type === 'reply' && typeof data.text === 'string') {
-        endTurn();
         clearEmptyState();
         addMessage('agent', data.text, true, typeof data.html === 'string' ? data.html : null);
         send.disabled = false;
@@ -465,7 +444,6 @@
         typeof data.title === 'string' &&
         Array.isArray(data.options)
       ) {
-        endTurn();
         clearEmptyState();
         addQuestion({
           type: 'question',
@@ -519,7 +497,6 @@
     send.disabled = true;
     setState('Working', 'busy');
     setActivity('Thinking…');
-    beginTurn();
     try {
       const response = await fetch('/api/messages', {
         method: 'POST',
@@ -533,7 +510,6 @@
       send.disabled = false;
       input.focus();
     } catch (error) {
-      endTurn();
       addMessage('system', error instanceof Error ? error.message : 'Message could not be sent.', false);
       send.disabled = false;
       setState('Ready', 'ready');
