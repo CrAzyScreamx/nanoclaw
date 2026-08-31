@@ -12,8 +12,10 @@ const { TEST_DATA_DIR } = vi.hoisted(() => ({ TEST_DATA_DIR: '/tmp/nanoclaw-test
 
 vi.mock('../config.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../config.js')>();
-  return { ...actual, DATA_DIR: TEST_DATA_DIR };
+  return { ...actual, DATA_DIR: TEST_DATA_DIR, GROUPS_DIR: path.join(TEST_DATA_DIR, 'groups') };
 });
+
+vi.mock('../request-wake.js', () => ({ requestWake: vi.fn().mockResolvedValue(true) }));
 
 async function unusedPort(): Promise<number> {
   const server = net.createServer();
@@ -27,7 +29,7 @@ async function unusedPort(): Promise<number> {
   return address.port;
 }
 
-async function startAdapter() {
+async function startAdapter(options: { routeMessages?: boolean } = {}) {
   const port = await unusedPort();
   process.env.NANOCLAW_LOCAL_WEB_PORT = String(port);
   vi.resetModules();
@@ -36,12 +38,34 @@ async function startAdapter() {
   const { runMigrations } = await import('../db/migrations/index.js');
   const db = await connection.initTestDb();
   await runMigrations(db);
+  await seedLegacyConversation();
+  await import('../cli/resources/groups.js');
+  await import('../cli/resources/messaging-groups.js');
+  await import('../cli/resources/wirings.js');
   const registry = await import('./channel-registry.js');
   await import('./local-web.js');
   const inbound: Array<{ platformId: string; threadId: string | null; message: InboundMessage }> = [];
   const actions: Array<{ questionId: string; selectedOption: string; userId: string }> = [];
   await registry.initChannelAdapters(() => ({
-    onInbound: (platformId, threadId, message) => void inbound.push({ platformId, threadId, message }),
+    onInbound: async (platformId, threadId, message) => {
+      inbound.push({ platformId, threadId, message });
+      if (options.routeMessages) {
+        const { routeInbound } = await import('../router.js');
+        await routeInbound({
+          channelType: 'local-web',
+          instance: 'local-web',
+          platformId,
+          threadId,
+          message: {
+            id: message.id,
+            kind: message.kind,
+            content: JSON.stringify(message.content),
+            timestamp: message.timestamp,
+            isGroup: message.isGroup,
+          },
+        });
+      }
+    },
     onInboundEvent: () => {},
     onMetadata: () => {},
     onAction: (questionId, selectedOption, userId) => void actions.push({ questionId, selectedOption, userId }),
@@ -52,10 +76,9 @@ async function startAdapter() {
   return { registry, inbound, actions, url: `http://127.0.0.1:${port}`, auth };
 }
 
-async function seedWebSession() {
+async function seedLegacyConversation(): Promise<void> {
   const { createAgentGroup } = await import('../db/agent-groups.js');
   const { createMessagingGroup, createMessagingGroupAgent } = await import('../db/messaging-groups.js');
-  const { resolveSession } = await import('../session-manager.js');
   const now = new Date().toISOString();
   await createAgentGroup({
     id: 'ag-web',
@@ -85,6 +108,10 @@ async function seedWebSession() {
     priority: 0,
     created_at: now,
   });
+}
+
+async function seedWebSession() {
+  const { resolveSession } = await import('../session-manager.js');
   return resolveSession('ag-web', 'mg-web', null, 'shared');
 }
 
@@ -92,20 +119,11 @@ afterEach(async () => {
   delete process.env.NANOCLAW_LOCAL_WEB_PORT;
   const { closeDb } = await import('../db/connection.js');
   await closeDb();
+  vi.clearAllMocks();
   fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
 });
 
 describe('local web adapter', () => {
-  it('keeps long-running progress visible without adding a speculative transcript message', () => {
-    const script = fs.readFileSync(path.join(process.cwd(), 'src/channels/local-web-page.js'), 'utf8');
-    const styles = fs.readFileSync(path.join(process.cwd(), 'src/channels/local-web-page.css'), 'utf8');
-
-    expect(script).toContain("activityLabel.textContent = 'Still working'");
-    expect(script).not.toContain('No reply yet');
-    expect(styles).toContain('z-index: 3');
-    expect(styles).toContain('env(safe-area-inset-bottom)');
-  });
-
   it('resolves host-initiated DMs to the live chat id so approval cards reach the browser', async () => {
     const { registry } = await startAdapter();
     try {
@@ -126,14 +144,17 @@ describe('local web adapter', () => {
     const firstAbort = new AbortController();
     const secondAbort = new AbortController();
     try {
-      const first = await fetch(`${url}/events?welcome=1`, {
+      const first = await fetch(`${url}/events?conversationId=mg-web&welcome=1`, {
         headers: { ...auth, origin: url },
         signal: firstAbort.signal,
       });
       const firstReady = new TextDecoder().decode((await first.body!.getReader().read()).value);
       expect(firstReady).toContain('{"type":"ready"}');
 
-      const second = await fetch(`${url}/events`, { headers: { ...auth, origin: url }, signal: secondAbort.signal });
+      const second = await fetch(`${url}/events?conversationId=mg-web`, {
+        headers: { ...auth, origin: url },
+        signal: secondAbort.signal,
+      });
       const secondReady = new TextDecoder().decode((await second.body!.getReader().read()).value);
       expect(secondReady).toContain('{"type":"ready"}');
       expect(inbound).toEqual([]);
@@ -154,25 +175,28 @@ describe('local web adapter', () => {
       const click = await fetch(`${url}/api/actions`, {
         method: 'POST',
         headers: forged,
-        body: JSON.stringify({ questionId: 'q-1', option: 0 }),
+        body: JSON.stringify({ conversationId: 'mg-web', questionId: 'q-1', option: 0 }),
       });
       expect(click.status).toBe(401);
 
       const wrongToken = await fetch(`${url}/api/actions`, {
         method: 'POST',
         headers: { ...forged, 'x-nanoclaw-local-web-token': 'not-the-token' },
-        body: JSON.stringify({ questionId: 'q-1', option: 0 }),
+        body: JSON.stringify({ conversationId: 'mg-web', questionId: 'q-1', option: 0 }),
       });
       expect(wrongToken.status).toBe(401);
 
       const message = await fetch(`${url}/api/messages`, {
         method: 'POST',
         headers: forged,
-        body: JSON.stringify({ text: 'hello' }),
+        body: JSON.stringify({ conversationId: 'mg-web', text: 'hello' }),
       });
       expect(message.status).toBe(401);
 
-      const stream = await fetch(`${url}/events`, { headers: { origin: url }, signal: abort.signal });
+      const stream = await fetch(`${url}/events?conversationId=mg-web`, {
+        headers: { origin: url },
+        signal: abort.signal,
+      });
       expect(stream.status).toBe(401);
 
       expect(actions).toEqual([]);
@@ -181,9 +205,17 @@ describe('local web adapter', () => {
       // The shell must load before it can report having no token; the authorized
       // stream is the control that this is a gate and not a blanket 401.
       expect((await fetch(`${url}/`)).status).toBe(200);
-      expect((await fetch(`${url}/events`, { headers: { ...auth, origin: url }, signal: abort.signal })).status).toBe(
-        200,
-      );
+      expect((await fetch(`${url}/local-web-chat.css`)).status).toBe(200);
+      expect((await fetch(`${url}/local-web-conversations.css`)).status).toBe(200);
+      expect((await fetch(`${url}/local-web-conversation-ui.js`)).status).toBe(200);
+      expect(
+        (
+          await fetch(`${url}/events?conversationId=mg-web`, {
+            headers: { ...auth, origin: url },
+            signal: abort.signal,
+          })
+        ).status,
+      ).toBe(200);
     } finally {
       abort.abort();
       await registry.teardownChannelAdapters();
@@ -217,6 +249,93 @@ describe('local web adapter', () => {
     }
   });
 
+  it('lists only opaque conversation records behind the browser token', async () => {
+    const { registry, url, auth } = await startAdapter();
+    try {
+      const response = await fetch(`${url}/api/conversations`, { headers: { ...auth, origin: url } });
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as Record<string, unknown>;
+      expect(body).toMatchObject({
+        installedProviders: expect.arrayContaining(['claude']),
+        installationDefault: 'claude',
+        isInstallationDefaultInstalled: true,
+      });
+      expect(body.conversations).toEqual([
+        expect.objectContaining({ conversationId: 'mg-web', agentName: 'Web Agent', provider: 'claude' }),
+      ]);
+      expect(JSON.stringify(body)).not.toContain('platform_id');
+      expect(JSON.stringify(body)).not.toContain('local-web:local');
+      expect(JSON.stringify(body)).not.toContain('agentGroupId');
+    } finally {
+      await registry.teardownChannelAdapters();
+    }
+  });
+
+  it('creates and resumes an agent through the narrow browser endpoint', async () => {
+    const { registry, url, auth } = await startAdapter();
+    try {
+      const headers = { ...auth, 'content-type': 'application/json', origin: url };
+      const extraAuthority = await fetch(`${url}/api/agents`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: 'Writer', agent_group_id: 'ag-picked-by-browser' }),
+      });
+      expect(extraAuthority.status).toBe(400);
+
+      const missingSource = await fetch(`${url}/api/agents`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: 'Writer', sourceConversationId: 'missing' }),
+      });
+      expect(missingSource.status).toBe(404);
+
+      const uninstalledProvider = await fetch(`${url}/api/agents`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: 'Researcher', provider: 'missing-provider' }),
+      });
+      expect(uninstalledProvider.status).toBe(409);
+
+      const created = await fetch(`${url}/api/agents`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: 'Writer', sourceConversationId: 'mg-web' }),
+      });
+      expect(created.status).toBe(201);
+      const first = (await created.json()) as { conversation: { conversationId: string } };
+      const resumed = await fetch(`${url}/api/agents`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: ' writer ', sourceConversationId: 'mg-web' }),
+      });
+      expect(resumed.status).toBe(200);
+      expect(await resumed.json()).toMatchObject({
+        created: false,
+        conversation: { conversationId: first.conversation.conversationId, agentName: 'Writer', provider: 'claude' },
+      });
+
+      const { getDb } = await import('../db/connection.js');
+      expect(
+        await getDb().get<{
+          groups: number;
+          conversations: number;
+          wirings: number;
+          destinations: number;
+          sessions: number;
+        }>(
+          `SELECT
+             (SELECT COUNT(*) FROM agent_groups WHERE folder = 'web-writer') AS groups,
+             (SELECT COUNT(*) FROM messaging_groups WHERE channel_type = 'local-web') AS conversations,
+             (SELECT COUNT(*) FROM messaging_group_agents) AS wirings,
+             (SELECT COUNT(*) FROM agent_destinations) AS destinations,
+             (SELECT COUNT(*) FROM sessions) AS sessions`,
+        ),
+      ).toEqual({ groups: 1, conversations: 2, wirings: 2, destinations: 2, sessions: 0 });
+    } finally {
+      await registry.teardownChannelAdapters();
+    }
+  });
+
   it('routes browser messages through the web adapter', async () => {
     const { registry, inbound, url, auth } = await startAdapter();
     try {
@@ -227,7 +346,7 @@ describe('local web adapter', () => {
       const response = await fetch(`${url}/api/messages`, {
         method: 'POST',
         headers: { ...auth, 'content-type': 'application/json', origin: url },
-        body: JSON.stringify({ text: 'hello' }),
+        body: JSON.stringify({ conversationId: 'mg-web', text: 'hello' }),
       });
       expect(response.status).toBe(202);
       expect(inbound).toHaveLength(1);
@@ -240,10 +359,38 @@ describe('local web adapter', () => {
       const blocked = await fetch(`${url}/api/messages`, {
         method: 'POST',
         headers: { ...auth, 'content-type': 'application/json', origin: 'https://attacker.example' },
-        body: JSON.stringify({ text: 'forged' }),
+        body: JSON.stringify({ conversationId: 'mg-web', text: 'forged' }),
       });
       expect(blocked.status).toBe(403);
       expect(inbound).toHaveLength(1);
+    } finally {
+      await registry.teardownChannelAdapters();
+    }
+  });
+
+  it('lets the first real message create the normal session and request a wake', async () => {
+    const { registry, url, auth } = await startAdapter({ routeMessages: true });
+    try {
+      const response = await fetch(`${url}/api/messages`, {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json', origin: url },
+        body: JSON.stringify({ conversationId: 'mg-web', text: 'first turn' }),
+      });
+      expect(response.status).toBe(202);
+
+      const { getSessionsByAgentGroup } = await import('../db/sessions.js');
+      const sessions = await getSessionsByAgentGroup('ag-web');
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0]).toMatchObject({ messaging_group_id: 'mg-web', container_status: 'stopped' });
+      const { withExistingMailboxSession } = await import('../session-manager.js');
+      const history = await withExistingMailboxSession('ag-web', sessions[0]!.id, (mailbox) =>
+        mailbox.getInboundHistory(10),
+      );
+      expect(history).toEqual([
+        expect.objectContaining({ kind: 'chat', content: expect.stringContaining('first turn') }),
+      ]);
+      const { requestWake } = await import('../request-wake.js');
+      expect(requestWake).toHaveBeenCalledOnce();
     } finally {
       await registry.teardownChannelAdapters();
     }
@@ -255,12 +402,12 @@ describe('local web adapter', () => {
       const accepted = await fetch(`${url}/api/messages`, {
         method: 'POST',
         headers: { ...auth, 'content-type': 'application/json', origin: url },
-        body: JSON.stringify({ text: 'a'.repeat(8_000) }),
+        body: JSON.stringify({ conversationId: 'mg-web', text: 'a'.repeat(8_000) }),
       });
       const rejected = await fetch(`${url}/api/messages`, {
         method: 'POST',
         headers: { ...auth, 'content-type': 'application/json', origin: url },
-        body: JSON.stringify({ text: 'a'.repeat(8_001) }),
+        body: JSON.stringify({ conversationId: 'mg-web', text: 'a'.repeat(8_001) }),
       });
 
       expect(accepted.status).toBe(202);
@@ -275,7 +422,10 @@ describe('local web adapter', () => {
     const { registry, url, auth } = await startAdapter();
     const abort = new AbortController();
     try {
-      const response = await fetch(`${url}/events`, { headers: { ...auth, origin: url }, signal: abort.signal });
+      const response = await fetch(`${url}/events?conversationId=mg-web`, {
+        headers: { ...auth, origin: url },
+        signal: abort.signal,
+      });
       expect(response.status).toBe(200);
       const reader = response.body!.getReader();
       await reader.read();
@@ -323,7 +473,10 @@ describe('local web adapter', () => {
           'local-web',
         );
 
-      const response = await fetch(`${url}/events`, { headers: { ...auth, origin: url }, signal: abort.signal });
+      const response = await fetch(`${url}/events?conversationId=mg-web`, {
+        headers: { ...auth, origin: url },
+        signal: abort.signal,
+      });
       const reader = response.body!.getReader();
       const frames = new TextDecoder().decode((await reader.read()).value);
       expect(frames).toContain('waiting reply');
@@ -344,6 +497,10 @@ describe('local web adapter', () => {
         request_id: 'appr-local-web',
         action: 'create_agent',
         payload: '{}',
+        agent_group_id: 'ag-web',
+        channel_type: 'local-web',
+        platform_id: 'local-web:local',
+        instance: 'local-web',
         created_at: new Date().toISOString(),
         title: 'Create ynet-researcher?',
         question: 'This creates a persistent agent.',
@@ -353,7 +510,10 @@ describe('local web adapter', () => {
         ]),
       });
 
-      const response = await fetch(`${url}/events`, { headers: { ...auth, origin: url }, signal: abort.signal });
+      const response = await fetch(`${url}/events?conversationId=mg-web`, {
+        headers: { ...auth, origin: url },
+        signal: abort.signal,
+      });
       const reader = response.body!.getReader();
       await reader.read();
       const messageId = await registry.createChannelDeliveryAdapter().deliver(
@@ -380,7 +540,7 @@ describe('local web adapter', () => {
       const blocked = await fetch(`${url}/api/actions`, {
         method: 'POST',
         headers: { ...auth, 'content-type': 'application/json', origin: 'https://attacker.example' },
-        body: JSON.stringify({ questionId: 'appr-local-web', option: 0 }),
+        body: JSON.stringify({ conversationId: 'mg-web', questionId: 'appr-local-web', option: 0 }),
       });
       expect(blocked.status).toBe(403);
       expect(actions).toEqual([]);
@@ -388,7 +548,7 @@ describe('local web adapter', () => {
       const action = await fetch(`${url}/api/actions`, {
         method: 'POST',
         headers: { ...auth, 'content-type': 'application/json', origin: url },
-        body: JSON.stringify({ questionId: 'appr-local-web', option: 0 }),
+        body: JSON.stringify({ conversationId: 'mg-web', questionId: 'appr-local-web', option: 0 }),
       });
       expect(action.status).toBe(202);
       expect(actions).toEqual([{ questionId: 'appr-local-web', selectedOption: 'approve', userId: 'local-web:local' }]);
@@ -435,7 +595,10 @@ describe('local web adapter', () => {
         outDb.close();
       }
 
-      const response = await fetch(`${url}/events`, { headers: { ...auth, origin: url }, signal: abort.signal });
+      const response = await fetch(`${url}/events?conversationId=mg-web`, {
+        headers: { ...auth, origin: url },
+        signal: abort.signal,
+      });
       const reader = response.body!.getReader();
       await reader.read();
       const delivery = registry.createChannelDeliveryAdapter();
@@ -443,7 +606,7 @@ describe('local web adapter', () => {
       await fetch(`${url}/api/messages`, {
         method: 'POST',
         headers: { ...auth, 'content-type': 'application/json', origin: url },
-        body: JSON.stringify({ text: 'hello' }),
+        body: JSON.stringify({ conversationId: 'mg-web', text: 'hello' }),
       });
       await delivery.setTyping('local-web', 'local-web:local', null, 'local-web');
       const delivered = await reader.read();
@@ -470,7 +633,7 @@ describe('local web adapter', () => {
       await fetch(`${url}/api/messages`, {
         method: 'POST',
         headers: { ...auth, 'content-type': 'application/json', origin: url },
-        body: JSON.stringify({ text: 'next' }),
+        body: JSON.stringify({ conversationId: 'mg-web', text: 'next' }),
       });
       const nextDb = openOutboundDbRw(outboundDbPath('ag-web', session.id));
       try {

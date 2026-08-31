@@ -13,11 +13,21 @@ import { log } from '../log.js';
 import { withExistingMailboxSession } from '../session-manager.js';
 import type { ChannelAdapter, ChannelDefaults, ChannelSetup, OutboundMessage } from './adapter.js';
 import { registerChannelAdapter } from './channel-registry.js';
+import {
+  createLocalWebAgent,
+  ensureLocalWebConversations,
+  isKnownLocalWebPlatformId,
+  listLocalWebCatalog,
+  LOCAL_WEB_CHANNEL_TYPE,
+  LOCAL_WEB_LEGACY_PLATFORM_ID,
+  LOCAL_WEB_USER_ID,
+  localWebPlatformIdForConversation,
+  localWebQuestionBelongsToConversation,
+  parseCreateLocalWebAgentRequest,
+} from './local-web-conversations.js';
 import { resolveQuestionRender } from './question-render-registry.js';
 
-const CHANNEL_TYPE = 'local-web';
-const PLATFORM_ID = 'local-web:local';
-const LOCAL_USER_ID = PLATFORM_ID;
+const CHANNEL_TYPE = LOCAL_WEB_CHANNEL_TYPE;
 const LISTEN_HOST = '127.0.0.1';
 const DEFAULT_PORT = 3210;
 const MAX_BODY_BYTES = 32 * 1024;
@@ -34,7 +44,8 @@ const LOCAL_WEB_DEFAULTS: ChannelDefaults = {
 
 type ParseFailure = { ok: false; status: number; message: string };
 type ParsedObject = { ok: true; value: Record<string, unknown> } | ParseFailure;
-type ParsedMessage = { ok: true; text: string } | ParseFailure;
+type ParsedMessage = { ok: true; conversationId: string; text: string } | ParseFailure;
+type ParsedAction = { ok: true; conversationId: string; questionId: string; option: number } | ParseFailure;
 
 type WebEvent =
   | { type: 'reply'; text: string; html: string }
@@ -137,6 +148,12 @@ async function parseObject(req: IncomingMessage): Promise<ParsedObject> {
 async function parseMessage(req: IncomingMessage): Promise<ParsedMessage> {
   const parsed = await parseObject(req);
   if (!parsed.ok) return parsed;
+  const unexpected = Object.keys(parsed.value).find((field) => field !== 'conversationId' && field !== 'text');
+  if (unexpected) return { ok: false, status: 400, message: `Unknown field: ${unexpected}.` };
+  const conversationId = parsed.value.conversationId;
+  if (typeof conversationId !== 'string' || conversationId.length === 0 || conversationId.length > 128) {
+    return { ok: false, status: 400, message: 'A valid conversation ID is required.' };
+  }
   const text = parsed.value.text;
   if (typeof text !== 'string' || text.trim().length === 0) {
     return { ok: false, status: 400, message: 'Message text is required.' };
@@ -144,7 +161,27 @@ async function parseMessage(req: IncomingMessage): Promise<ParsedMessage> {
   if (text.length > MAX_MESSAGE_CHARS) {
     return { ok: false, status: 413, message: `Messages are limited to ${MAX_MESSAGE_CHARS} characters.` };
   }
-  return { ok: true, text: text.trim() };
+  return { ok: true, conversationId, text: text.trim() };
+}
+
+async function parseAction(req: IncomingMessage): Promise<ParsedAction> {
+  const parsed = await parseObject(req);
+  if (!parsed.ok) return parsed;
+  const unexpected = Object.keys(parsed.value).find(
+    (field) => field !== 'conversationId' && field !== 'questionId' && field !== 'option',
+  );
+  if (unexpected) return { ok: false, status: 400, message: `Unknown field: ${unexpected}.` };
+  const { conversationId, questionId, option } = parsed.value;
+  if (typeof conversationId !== 'string' || conversationId.length === 0 || conversationId.length > 128) {
+    return { ok: false, status: 400, message: 'A valid conversation ID is required.' };
+  }
+  if (typeof questionId !== 'string' || questionId.length === 0 || questionId.length > MAX_QUESTION_ID_CHARS) {
+    return { ok: false, status: 400, message: 'A valid question ID is required.' };
+  }
+  if (typeof option !== 'number' || !Number.isInteger(option) || option < 0) {
+    return { ok: false, status: 400, message: 'A valid option is required.' };
+  }
+  return { ok: true, conversationId, questionId, option };
 }
 
 function responseHeaders(contentType: string): Record<string, string> {
@@ -207,8 +244,8 @@ async function toWebEvent(message: OutboundMessage): Promise<WebEvent | null> {
   return text === null ? null : { type: 'reply', text, html: markdown.render(text) };
 }
 
-async function currentTool(): Promise<string | null> {
-  const messagingGroup = await getMessagingGroupByPlatform(CHANNEL_TYPE, PLATFORM_ID);
+async function currentTool(platformId: string): Promise<string | null> {
+  const messagingGroup = await getMessagingGroupByPlatform(CHANNEL_TYPE, platformId, CHANNEL_TYPE);
   if (!messagingGroup) return null;
 
   for (const wiring of await getMessagingGroupAgents(messagingGroup.id)) {
@@ -237,18 +274,34 @@ function createAdapter(): ChannelAdapter {
   const assets: Record<string, { body: string; contentType: string }> = {
     '/': { body: readAsset('local-web-page.html'), contentType: 'text/html; charset=utf-8' },
     '/local-web-page.css': { body: readAsset('local-web-page.css'), contentType: 'text/css; charset=utf-8' },
+    '/local-web-chat.css': { body: readAsset('local-web-chat.css'), contentType: 'text/css; charset=utf-8' },
+    '/local-web-conversations.css': {
+      body: readAsset('local-web-conversations.css'),
+      contentType: 'text/css; charset=utf-8',
+    },
+    '/local-web-conversation-ui.js': {
+      body: readAsset('local-web-conversation-ui.js'),
+      contentType: 'text/javascript; charset=utf-8',
+    },
     '/local-web-page.js': { body: readAsset('local-web-page.js'), contentType: 'text/javascript; charset=utf-8' },
   };
-  const clients = new Set<ServerResponse>();
+  const clients = new Map<string, Set<ServerResponse>>();
   // Server-side buffer while no browser is connected; unrelated to the page's own 100-item view cap.
   const MAX_PENDING_EVENTS = 100;
-  const pendingEvents: WebEvent[] = [];
+  const pendingEvents = new Map<string, WebEvent[]>();
   let server: http.Server | null = null;
-  let awaitingReply = false;
+  const awaitingReplies = new Set<string>();
 
-  function publish(event: unknown): void {
+  function publish(platformId: string, event: unknown): void {
     const frame = `data: ${JSON.stringify(event)}\n\n`;
-    for (const client of clients) client.write(frame);
+    for (const client of clients.get(platformId) ?? []) client.write(frame);
+  }
+
+  function queue(platformId: string, event: WebEvent): void {
+    const pending = pendingEvents.get(platformId) ?? [];
+    pending.push(event);
+    if (pending.length > MAX_PENDING_EVENTS) pending.shift();
+    pendingEvents.set(platformId, pending);
   }
 
   async function handleRequest(req: IncomingMessage, res: ServerResponse, setup: ChannelSetup): Promise<void> {
@@ -279,23 +332,49 @@ function createAdapter(): ChannelAdapter {
     // only: an HTTP client sets those headers freely.
     if (!isAuthorized(req, token)) {
       sendJson(res, 401, {
-        error: 'This browser is not authorized. Reopen the chat from the token link its install prints.',
+        error: 'This browser is not authorized. Run `pnpm local-web` in the NanoClaw folder and open its link.',
       });
       return;
     }
 
+    if (req.method === 'GET' && pathname === '/api/conversations') {
+      if (!requestOriginAllowed(req, authority)) {
+        sendJson(res, 403, { error: 'Cross-origin requests are not allowed.' });
+        return;
+      }
+      sendJson(res, 200, await listLocalWebCatalog());
+      return;
+    }
     if (req.method === 'GET' && pathname === '/events') {
       if (!requestOriginAllowed(req, authority)) {
         sendJson(res, 403, { error: 'Cross-origin requests are not allowed.' });
+        return;
+      }
+      const conversationId = url.searchParams.get('conversationId');
+      if (!conversationId || conversationId.length > 128) {
+        sendJson(res, 400, { error: 'A valid conversation ID is required.' });
+        return;
+      }
+      const platformId = await localWebPlatformIdForConversation(conversationId);
+      if (!platformId) {
+        sendJson(res, 404, { error: 'Conversation not found.' });
         return;
       }
       res.writeHead(200, {
         ...responseHeaders('text/event-stream; charset=utf-8'),
         connection: 'keep-alive',
       });
-      clients.add(res);
-      req.on('close', () => clients.delete(res));
-      for (const event of pendingEvents.splice(0)) res.write(`data: ${JSON.stringify(event)}\n\n`);
+      const conversationClients = clients.get(platformId) ?? new Set<ServerResponse>();
+      conversationClients.add(res);
+      clients.set(platformId, conversationClients);
+      req.on('close', () => {
+        conversationClients.delete(res);
+        if (conversationClients.size === 0) clients.delete(platformId);
+      });
+      for (const event of pendingEvents.get(platformId) ?? []) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      pendingEvents.delete(platformId);
       res.write(`data: ${JSON.stringify({ type: 'ready' })}\n\n`);
       return;
     }
@@ -309,18 +388,23 @@ function createAdapter(): ChannelAdapter {
         sendJson(res, parsed.status, { error: parsed.message });
         return;
       }
-      await setup.onInbound(PLATFORM_ID, null, {
+      const platformId = await localWebPlatformIdForConversation(parsed.conversationId);
+      if (!platformId) {
+        sendJson(res, 404, { error: 'Conversation not found.' });
+        return;
+      }
+      await setup.onInbound(platformId, null, {
         id: `local-web-${randomUUID()}`,
         kind: 'chat',
         timestamp: new Date().toISOString(),
-        content: { text: parsed.text, sender: 'browser', senderId: LOCAL_USER_ID },
+        content: { text: parsed.text, sender: 'browser', senderId: LOCAL_WEB_USER_ID },
         isGroup: false,
       });
-      awaitingReply = true;
+      awaitingReplies.add(platformId);
       sendJson(res, 202, { ok: true });
       return;
     }
-    if (req.method === 'POST' && pathname === '/api/actions') {
+    if (req.method === 'POST' && pathname === '/api/agents') {
       if (!requestOriginAllowed(req, authority) || req.headers.origin !== authority) {
         sendJson(res, 403, { error: 'Cross-origin requests are not allowed.' });
         return;
@@ -330,25 +414,56 @@ function createAdapter(): ChannelAdapter {
         sendJson(res, parsed.status, { error: parsed.message });
         return;
       }
-      const { questionId, option } = parsed.value;
-      if (typeof questionId !== 'string' || questionId.length === 0 || questionId.length > MAX_QUESTION_ID_CHARS) {
-        sendJson(res, 400, { error: 'A valid question ID is required.' });
+      const request = parseCreateLocalWebAgentRequest(parsed.value);
+      if (!request.ok) {
+        sendJson(res, 400, { error: request.message });
         return;
       }
-      const render = await resolveQuestionRender(questionId);
+      const result = await createLocalWebAgent(request.value);
+      if (!result.ok) {
+        if (result.detail) {
+          log.warn('Local web agent creation stopped', { stage: result.stage, detail: result.detail });
+        }
+        sendJson(res, result.status, { error: result.message, ...(result.stage && { stage: result.stage }) });
+        return;
+      }
+      sendJson(res, result.created ? 201 : 200, result);
+      return;
+    }
+    if (req.method === 'POST' && pathname === '/api/actions') {
+      if (!requestOriginAllowed(req, authority) || req.headers.origin !== authority) {
+        sendJson(res, 403, { error: 'Cross-origin requests are not allowed.' });
+        return;
+      }
+      const parsed = await parseAction(req);
+      if (!parsed.ok) {
+        sendJson(res, parsed.status, { error: parsed.message });
+        return;
+      }
+      const platformId = await localWebPlatformIdForConversation(parsed.conversationId);
+      if (!platformId) {
+        sendJson(res, 404, { error: 'Conversation not found.' });
+        return;
+      }
+      if (!(await localWebQuestionBelongsToConversation(parsed.questionId, parsed.conversationId))) {
+        sendJson(res, 404, { error: 'This question is not pending in this conversation.' });
+        return;
+      }
+      const render = await resolveQuestionRender(parsed.questionId);
       if (!render) {
         sendJson(res, 404, { error: 'This question is no longer pending.' });
         return;
       }
-      if (!Number.isInteger(option) || (option as number) < 0 || (option as number) >= render.options.length) {
+      if (parsed.option >= render.options.length) {
         sendJson(res, 400, { error: 'A valid option is required.' });
         return;
       }
-      setup.onAction(questionId, render.options[option as number].value, LOCAL_USER_ID);
-      publish({
+      const selected = render.options[parsed.option]!;
+      setup.onAction(parsed.questionId, selected.value, LOCAL_WEB_USER_ID);
+      publish(platformId, {
         type: 'question-resolution',
-        questionId,
-        resolution: render.options[option as number].selectedLabel,
+        questionId: parsed.questionId,
+        resolution: selected.selectedLabel,
       });
       sendJson(res, 202, { ok: true });
       return;
@@ -363,6 +478,7 @@ function createAdapter(): ChannelAdapter {
     supportsThreads: false,
 
     async setup(config): Promise<void> {
+      await ensureLocalWebConversations();
       server = http.createServer((req, res) => {
         void handleRequest(req, res, config).catch((err: unknown) => {
           log.error('Local web chat request failed', { err });
@@ -374,12 +490,16 @@ function createAdapter(): ChannelAdapter {
         server!.once('error', reject);
         server!.listen(port, LISTEN_HOST, resolve);
       });
-      log.info('Local web chat listening', { url: `http://${LISTEN_HOST}:${port}` });
+      log.info('Local web chat listening', { url: `http://${LISTEN_HOST}:${port}`, launchCommand: 'pnpm local-web' });
     },
 
     async teardown(): Promise<void> {
-      for (const client of clients) client.end();
+      for (const conversationClients of clients.values()) {
+        for (const client of conversationClients) client.end();
+      }
       clients.clear();
+      pendingEvents.clear();
+      awaitingReplies.clear();
       if (!server) return;
       const active = server;
       server = null;
@@ -395,28 +515,27 @@ function createAdapter(): ChannelAdapter {
     // without openDM it would derive the bare handle and mint a phantom
     // messaging group that deliver() rejects, so the card is never rendered.
     async openDM(): Promise<string> {
-      return PLATFORM_ID;
+      return LOCAL_WEB_LEGACY_PLATFORM_ID;
     },
 
     async deliver(platformId, _threadId, message): Promise<string | undefined> {
-      if (platformId !== PLATFORM_ID) return undefined;
+      if (!(await isKnownLocalWebPlatformId(platformId))) return undefined;
       const event = await toWebEvent(message);
       if (event === null) return undefined;
       const completesTurn = event.type === 'reply' || event.type === 'question';
-      if (completesTurn) awaitingReply = false;
-      if (clients.size === 0) {
-        pendingEvents.push(event);
-        if (pendingEvents.length > MAX_PENDING_EVENTS) pendingEvents.shift();
+      if (completesTurn) awaitingReplies.delete(platformId);
+      if ((clients.get(platformId)?.size ?? 0) === 0) {
+        queue(platformId, event);
       } else {
-        publish(event);
+        publish(platformId, event);
       }
       return event.type === 'question' ? event.questionId : undefined;
     },
 
     async setTyping(platformId): Promise<void> {
-      if (platformId !== PLATFORM_ID || !awaitingReply) return;
-      const tool = await currentTool();
-      publish(tool ? { type: 'tool', name: tool } : { type: 'thinking' });
+      if (!awaitingReplies.has(platformId)) return;
+      const tool = await currentTool(platformId);
+      publish(platformId, tool ? { type: 'tool', name: tool } : { type: 'thinking' });
     },
   };
 }
